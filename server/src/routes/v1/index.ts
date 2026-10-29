@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authRoutes } from "@/routes/v1/auth.route";
 
-// Add feature routers here as the API is built.
 export const routes = Router();
+routes.use("/auth", authRoutes);

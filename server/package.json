@@ -15,6 +15,7 @@
     "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
+    "@clerk/express": "^2.1.85",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
