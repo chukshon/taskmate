@@ -44,9 +44,37 @@ separate `@/` alias resolves to the `client` root.
 - `src/controllers`, `src/services`, `src/types`, `src/validators`: placeholders for future features.
 - `test`: HTTP behavior checks.
 
-No database, authentication, AI provider, background worker, or deployment
-integration is configured. Add feature controllers, services, and persistence
-when those features are introduced.
+Clerk session authentication is configured. No database, AI provider, background
+worker, billing, or deployment integration is configured. Add feature services
+and persistence when those features are introduced.
+
+## Authentication
+
+The API uses the same Clerk development application as the Next.js client.
+Its keys are stored in the ignored `server/.env`. For another checkout, populate
+the Clerk variables listed in `.env.example`. `CLERK_PUBLISHABLE_KEY` is the
+standard server key name; `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is also accepted
+because Clerk's accountless env pull preserves the frontend's name. Never use
+`NEXT_PUBLIC_` for the secret key.
+
+From `client`, refresh the server's keys without creating another application:
+
+```bash
+npx -y clerk@latest env pull --file ../server/.env
+```
+
+`GET /api/v1/auth/me` requires a Clerk session token in the Authorization header
+(`Bearer <token>`). It returns the verified `userId` and `sessionId` in the normal
+success envelope. Missing, invalid, expired, pending, or untrusted-origin sessions
+return the standard JSON 401 error. The browser cannot select its user ID.
+
+Clerk middleware reads/verifies sessions on API routes. Apply `requireSession`
+before future authenticated controllers; middleware alone does not protect a
+route. `/health` and CORS preflights remain public. Browser requests must originate
+from `CLIENT_ORIGIN`, which is also the authorized party for Clerk session tokens.
+
+Tests generate independent RSA keys and synthetic session tokens, so they never
+need a real user's session or call Clerk to verify signatures.
 
 The health endpoint is not rate-limited. `/api/v1` uses an in-memory limit of
 100 requests per 15 minutes per IP. This is a single-process setup; shared
