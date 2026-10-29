@@ -2,6 +2,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import express from "express";
 import helmet from "helmet";
+import { clerkMiddleware } from "@clerk/express";
 import { env } from "@/config/env.config";
 import { logger } from "@/utils/logger";
 import { errorHandler, notFound } from "@/middlewares/errorHandler.middleware";
@@ -26,7 +27,12 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true, limit: "100kb" }));
   app.use(cookieParser());
   app.use(healthRouter);
-  app.use("/api/v1", apiLimiter, routes);
+  app.use("/api/v1", apiLimiter, clerkMiddleware({
+    publishableKey: env.CLERK_PUBLISHABLE_KEY,
+    secretKey: env.CLERK_SECRET_KEY,
+    jwtKey: env.CLERK_JWT_KEY,
+    authorizedParties: [new URL(env.CLIENT_ORIGIN).origin],
+  }), routes);
   app.use(notFound);
   app.use(errorHandler);
 

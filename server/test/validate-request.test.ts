@@ -5,8 +5,9 @@ import { after, before, test } from "node:test";
 import express from "express";
 import { z } from "zod";
 import { validateRequest, type ValidatedHandler } from "@/middlewares/validateRequest.middleware";
+import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 
-process.env.NODE_ENV = "test";
+configureClerkTestEnvironment();
 const { errorHandler } = await import("@/middlewares/errorHandler.middleware");
 
 const schemas = {

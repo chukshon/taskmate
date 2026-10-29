@@ -7,9 +7,16 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   CLIENT_ORIGIN: z.url().default("http://localhost:3000"),
   LOG_LEVEL: z.enum(["error", "warn", "info", "http", "verbose", "debug", "silly"]).default("info"),
+  CLERK_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
+  CLERK_SECRET_KEY: z.string().startsWith("sk_"),
+  CLERK_JWT_KEY: z.string().min(1).optional(),
 });
 
-const result = envSchema.safeParse(process.env);
+const result = envSchema.safeParse({
+  ...process.env,
+  // Clerk's Next.js accountless env pull retains this public-key name.
+  CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+});
 
 if (!result.success) {
   // Report invalid variable names without printing their values.

@@ -4,9 +4,9 @@ import type { AddressInfo } from "node:net";
 import { after, before, test } from "node:test";
 import express from "express";
 import { z } from "zod";
+import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 
-process.env.NODE_ENV = "test";
-process.env.CLIENT_ORIGIN = "http://localhost:3000";
+configureClerkTestEnvironment();
 const { createApp } = await import("@/app");
 const { errorHandler } = await import("@/middlewares/errorHandler.middleware");
 

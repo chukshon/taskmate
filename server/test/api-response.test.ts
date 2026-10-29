@@ -6,8 +6,9 @@ import express from "express";
 import type { SuccessResponse } from "@/types/api-response";
 import { getSuccessResponse } from "@/utils/api-response";
 import { ForbiddenException } from "@/utils/app-error";
+import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 
-process.env.NODE_ENV = "test";
+configureClerkTestEnvironment();
 const { errorHandler } = await import("@/middlewares/errorHandler.middleware");
 
 const app = express();
