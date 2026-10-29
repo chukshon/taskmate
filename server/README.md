@@ -51,3 +51,32 @@ when those features are introduced.
 The health endpoint is not rate-limited. `/api/v1` uses an in-memory limit of
 100 requests per 15 minutes per IP. This is a single-process setup; shared
 rate-limit storage and proxy settings should be chosen when deployment is configured.
+
+## Request validation
+
+Use `validateRequest` before a controller and read parsed values from
+`res.locals.validated`. It validates the configured `body`, `params`, and `query`
+sections together with Zod's `parseAsync`, preserving defaults, transformations,
+and asynchronous refinements. Original request inputs are not modified.
+
+```ts
+import { z } from "zod";
+import { validateRequest, type ValidatedHandler } from "@/middlewares/validateRequest.middleware";
+
+const listSchema = {
+  query: z.object({ page: z.coerce.number().int().positive().default(1) }),
+};
+
+const list: ValidatedHandler<typeof listSchema> = (_req, res) => {
+  const { page } = res.locals.validated.query; // number
+  res.json({ page });
+};
+
+// Add to the appropriate feature router when implementing the feature:
+router.get("/items", validateRequest(listSchema), list);
+```
+
+Annotate separately declared controllers with `ValidatedHandler<typeof schema>`
+to retain parsed output types. Keep validation middleware before the controller;
+the type annotation alone does not run validation. The central error handler
+returns HTTP 400 with `ERR_VALIDATION` and details such as `query.page`.
