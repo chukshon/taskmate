@@ -31,13 +31,13 @@ test("health endpoint responds with JSON and security headers", async () => {
 test("unknown routes return a consistent JSON 404", async () => {
   const response = await fetch(`${baseUrl}/missing`);
   assert.equal(response.status, 404);
-  assert.deepEqual(await response.json(), { error: { code: "ERR_NOT_FOUND", message: "Route not found" } });
+  assert.deepEqual(await response.json(), { success: false, errorCode: "ERR_NOT_FOUND", message: "Route not found" });
 });
 
 test("malformed JSON returns 400 without echoing request data", async () => {
   const response = await fetch(`${baseUrl}/missing`, { method: "POST", headers: { "content-type": "application/json" }, body: "{secret-value" });
   assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: { code: "ERR_BAD_REQUEST", message: "Request body must be valid JSON" } });
+  assert.deepEqual(await response.json(), { success: false, errorCode: "ERR_BAD_REQUEST", message: "Request body must be valid JSON" });
 });
 
 test("CORS permits the configured frontend origin", async () => {
@@ -53,7 +53,9 @@ test("API rate limiting leaves the health endpoint available", async () => {
   }
   const limited = await fetch(`${baseUrl}/api/v1/missing`);
   assert.equal(limited.status, 429);
-  assert.deepEqual(await limited.json(), { error: { code: "ERR_TOO_MANY_REQUESTS", message: "Too many requests. Try again later." } });
+  assert.deepEqual(await limited.json(), {
+    success: false, errorCode: "ERR_TOO_MANY_REQUESTS", message: "Too many requests. Try again later.",
+  });
 
   const health = await fetch(`${baseUrl}/health`);
   assert.equal(health.status, 200);
@@ -71,13 +73,14 @@ test("unexpected async errors return 500 without exposing internal details", asy
   try {
     const response = await fetch(`http://127.0.0.1:${(failingServer.address() as AddressInfo).port}/fail`);
     assert.equal(response.status, 500);
-    assert.deepEqual(await response.json(), { error: { code: "ERR_INTERNAL", message: "Internal server error" } });
+    assert.deepEqual(await response.json(), { success: false, errorCode: "ERR_INTERNAL", message: "Internal server error" });
 
     const invalid = await fetch(`http://127.0.0.1:${(failingServer.address() as AddressInfo).port}/invalid`);
     assert.equal(invalid.status, 400);
     const body = await invalid.json();
-    assert.equal(body.error.code, "ERR_VALIDATION");
-    assert.equal(body.error.details[0].field, "name");
+    assert.equal(body.success, false);
+    assert.equal(body.errorCode, "ERR_VALIDATION");
+    assert.equal(body.errors[0].field, "name");
   } finally {
     await new Promise<void>((resolve, reject) => failingServer.close((error) => error ? reject(error) : resolve()));
   }

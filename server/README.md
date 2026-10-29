@@ -80,3 +80,33 @@ Annotate separately declared controllers with `ValidatedHandler<typeof schema>`
 to retain parsed output types. Keep validation middleware before the controller;
 the type annotation alone does not run validation. The central error handler
 returns HTTP 400 with `ERR_VALIDATION` and details such as `query.page`.
+
+## API responses
+
+Response types live in `src/types/api-response.ts`; runtime helpers live in
+`src/utils/api-response.ts`.
+
+```ts
+import { getSuccessResponse } from "@/utils/api-response";
+
+res.status(201).json(getSuccessResponse(createdItem, "Item created"));
+// { success: true, message: "Item created", data: createdItem }
+```
+
+Throw application errors from controllers and services. The central error handler
+formats errors consistently, using a required, typed `errorCode`:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errorCode": "ERR_VALIDATION",
+  "errors": [{ "field": "query.page", "message": "Page must be positive" }]
+}
+```
+
+`errors` is omitted when there are no field-level validation details. When a
+middleware needs to send an error directly, use
+`getErrorResponse({ message, errorCode, errors })`. Keep the appropriate HTTP
+status; the response helper only formats the JSON. HTTP 204 responses have no
+body, and `/health` retains its small infrastructure response.

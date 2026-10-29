@@ -78,8 +78,9 @@ test("returns errors from all sections and never calls the controller on failure
   });
   assert.equal(response.status, 400);
   const body = await response.json();
-  assert.equal(body.error.code, "ERR_VALIDATION");
-  assert.deepEqual(body.error.details.map((detail: { field: string }) => detail.field).sort(), ["body.name", "params.id", "query.page"]);
+  assert.equal(body.success, false);
+  assert.equal(body.errorCode, "ERR_VALIDATION");
+  assert.deepEqual(body.errors.map((detail: { field: string }) => detail.field).sort(), ["body.name", "params.id", "query.page"]);
   assert.equal(controllerCalls, callsBefore);
 });
 
@@ -87,7 +88,7 @@ test("rejects missing required request bodies", async () => {
   const response = await fetch(`${baseUrl}/items/1`, { method: "POST" });
   assert.equal(response.status, 400);
   const body = await response.json();
-  assert.equal(body.error.details[0].field, "body");
+  assert.equal(body.errors[0].field, "body");
 });
 
 test("awaits async refinements and transformations", async () => {
@@ -102,11 +103,14 @@ test("awaits async refinements and transformations", async () => {
   });
   assert.equal(invalid.status, 400);
   const body = await invalid.json();
-  assert.deepEqual(body.error.details, [{ field: "body.name", message: "Name is taken" }]);
+  assert.deepEqual(body, {
+    success: false, errorCode: "ERR_VALIDATION", message: "Validation failed",
+    errors: [{ field: "body.name", message: "Name is taken" }],
+  });
 });
 
 test("forwards unexpected errors without exposing their messages", async () => {
   const response = await fetch(`${baseUrl}/throw`);
   assert.equal(response.status, 500);
-  assert.deepEqual(await response.json(), { error: { code: "ERR_INTERNAL", message: "Internal server error" } });
+  assert.deepEqual(await response.json(), { success: false, errorCode: "ERR_INTERNAL", message: "Internal server error" });
 });
