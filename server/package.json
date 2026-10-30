@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "tsx --test test/*.test.ts",
+    "test:integration": "tsx --test test/integration/*.test.ts",
     "db:check": "tsx src/db/check.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
