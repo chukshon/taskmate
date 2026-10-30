@@ -10,6 +10,7 @@ const envSchema = z.object({
   CLERK_PUBLISHABLE_KEY: z.string().startsWith("pk_"),
   CLERK_SECRET_KEY: z.string().startsWith("sk_"),
   CLERK_JWT_KEY: z.string().min(1).optional(),
+  DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 });
 
 const result = envSchema.safeParse({

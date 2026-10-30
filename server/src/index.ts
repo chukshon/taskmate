@@ -1,5 +1,6 @@
 import { createApp } from "@/app";
 import { env } from "@/config/env.config";
+import { pool } from "@/db";
 import { logger } from "@/utils/logger";
 
 const server = createApp().listen(env.PORT, env.HOST, () => {
@@ -26,13 +27,22 @@ function shutdown(signal: NodeJS.Signals) {
   timeout.unref();
 
   server.close((error) => {
-    clearTimeout(timeout);
     if (error) {
+      clearTimeout(timeout);
       logger.error("Shutdown failed", { errorType: error.name });
       process.exitCode = 1;
       return;
     }
-    logger.info("Server stopped");
+    pool.end().then(() => {
+      clearTimeout(timeout);
+      logger.info("Server stopped");
+    }).catch((error: unknown) => {
+      clearTimeout(timeout);
+      logger.error("Database shutdown failed", {
+        errorType: error instanceof Error ? error.name : "UnknownError",
+      });
+      process.exitCode = 1;
+    });
   });
 }
 
