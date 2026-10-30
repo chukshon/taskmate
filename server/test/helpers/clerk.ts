@@ -6,6 +6,7 @@ export function configureClerkTestEnvironment() {
   const domain = "taskmate-test.clerk.accounts.dev";
   process.env.NODE_ENV = "test";
   process.env.CLIENT_ORIGIN = "http://localhost:3000";
+  process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/taskmate_test";
   process.env.CLERK_PUBLISHABLE_KEY = `pk_test_${Buffer.from(`${domain}$`).toString("base64")}`;
   process.env.CLERK_SECRET_KEY = "sk_test_taskmate_unit_tests_only";
   process.env.CLERK_JWT_KEY = publicKey.export({ type: "spki", format: "pem" }).toString();

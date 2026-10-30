@@ -13,6 +13,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "tsup.config.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "tsup.config.ts", "drizzle.config.ts", "neon.ts"],
   "exclude": ["node_modules", "dist"]
 }
