@@ -13,3 +13,17 @@ export const chatSchema = z.object({
 })
 
 export const chatListSchema = z.array(chatSchema)
+
+export const chatDetailSchema = chatSchema.extend({
+  bots: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        avatar: z.string(),
+        job: z.string(),
+        instructions: z.string().nullable(),
+      })
+    )
+    .min(1),
+})

@@ -12,16 +12,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { BotForm } from "@/features/bots/bot-form"
+import { BotForm, type EditableBot } from "@/features/bots/bot-form"
 
 function BotDialog({
   children,
   open: controlledOpen,
   onOpenChange,
+  bot,
+  trigger,
 }: {
   children?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  bot?: EditableBot
+  trigger?: React.ReactElement
 }) {
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
@@ -36,8 +40,10 @@ function BotDialog({
         if (!busy) setOpen(nextOpen)
       }}
     >
-      {children && (
-        <DialogTrigger render={<Button variant="secondary" size="lg" />}>
+      {(children || trigger) && (
+        <DialogTrigger
+          render={trigger ?? <Button variant="secondary" size="lg" />}
+        >
           {children}
         </DialogTrigger>
       )}
@@ -46,13 +52,16 @@ function BotDialog({
         showCloseButton={!busy}
       >
         <DialogHeader>
-          <DialogTitle>New bot</DialogTitle>
+          <DialogTitle>{bot ? "Edit bot" : "New bot"}</DialogTitle>
           <DialogDescription>
-            Give it a face, a name, and a job to do.
+            {bot
+              ? "Update its face, name, and how it should work."
+              : "Give it a face, a name, and a job to do."}
           </DialogDescription>
         </DialogHeader>
         {open && (
           <BotForm
+            bot={bot}
             onBusyChange={setBusy}
             onSaved={() => {
               setOpen(false)
