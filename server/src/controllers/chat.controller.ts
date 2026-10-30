@@ -1,6 +1,23 @@
 import type { SessionHandler } from "@/middlewares/requireSession.middleware";
-import { getChats } from "@/services/chat.service";
+import { getChat, getChats } from "@/services/chat.service";
 import { getSuccessResponse } from "@/utils/api-response";
+import { z } from "zod";
+import type { Request, RequestHandler } from "express";
+import type { SessionLocals } from "@/middlewares/requireSession.middleware";
+import type { ValidatedLocals } from "@/middlewares/validateRequest.middleware";
+
+export const getChatRequest = { params: z.object({ chatId: z.string().trim().min(1).max(128) }) };
+
+type ChatHandler = RequestHandler<Request["params"], unknown, unknown, Request["query"], SessionLocals & ValidatedLocals<typeof getChatRequest>>;
+
+export function getChatHandler(findChat = getChat): ChatHandler {
+  return async (_req, res) => {
+    const { chatId } = res.locals.validated.params;
+    const chat = await findChat(res.locals.session.userId, chatId);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(getSuccessResponse(chat, "Chat retrieved."));
+  };
+}
 
 export function getChatsHandler(listChats = getChats): SessionHandler {
   return async (_req, res) => {

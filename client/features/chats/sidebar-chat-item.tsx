@@ -1,11 +1,17 @@
+"use client"
+
 import { format, formatDistanceToNowStrict } from "date-fns"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 import { ChatAvatar } from "@/components/chat-avatar"
 import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import type { ChatSummary } from "@/services/chats/types"
 
 export function SidebarChatItem({ chat }: { chat: ChatSummary }) {
+  const pathname = usePathname()
+  const href = `/chats/${encodeURIComponent(chat.id)}`
+  const isActive = pathname === href
   const bot = chat.bots[0]
   const date = new Date(chat.lastMessageAt)
 
@@ -14,11 +20,13 @@ export function SidebarChatItem({ chat }: { chat: ChatSummary }) {
       <SidebarMenuButton
         render={
           <Link
-            href={`/chats/${encodeURIComponent(chat.id)}`}
+            href={href}
             prefetch={false}
+            aria-current={isActive ? "page" : undefined}
           />
         }
         size="lg"
+        isActive={isActive}
         aria-label={chat.name ?? bot.name}
         tooltip={chat.name ?? bot.name}
         className="group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"

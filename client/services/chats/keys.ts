@@ -3,4 +3,6 @@ export const chatKeys = {
     ["chats", userId ?? "signed-out"] as const,
   list: (userId: string | null | undefined) =>
     [...chatKeys.all(userId), "list"] as const,
+  detail: (userId: string | null | undefined, chatId: string) =>
+    [...chatKeys.all(userId), "detail", chatId] as const,
 }
