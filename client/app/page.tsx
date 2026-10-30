@@ -1,16 +1,40 @@
 import { auth } from "@clerk/nextjs/server"
-import { ApiSessionCheck } from "@/components/api-session-check"
+import { PlusIcon } from "lucide-react"
+
+import { ChatAvatar } from "@/components/chat-avatar"
+import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 
 export default async function Page() {
   await auth.protect()
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 p-6 py-12">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Welcome to Taskmate</h1>
-        <p className="text-muted-foreground">You&apos;re signed in. Your workspace is ready for the next stage.</p>
-      </div>
-      <ApiSessionCheck />
+    <main className="flex min-h-[calc(100svh-4rem)] p-6">
+      <Empty>
+        <EmptyHeader className="max-w-md">
+          <EmptyMedia>
+            <ChatAvatar seed={crypto.randomUUID()} className="size-10" />
+          </EmptyMedia>
+          <EmptyTitle>Meet your first bot</EmptyTitle>
+          <EmptyDescription>
+            Every bot gets its own personality, memory, and face. Spin one up and
+            start the conversation.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button variant="secondary" size="lg">
+            <PlusIcon data-icon="inline-start" />
+            Create a new bot
+          </Button>
+        </EmptyContent>
+      </Empty>
     </main>
   )
 }
