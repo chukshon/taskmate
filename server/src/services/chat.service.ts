@@ -14,7 +14,7 @@ export async function getChat(userId: string, chatId: string) {
       members: {
         columns: {},
         orderBy: [asc(chatMembers.joinedAt), asc(chatMembers.botId)],
-        with: { bot: { columns: { id: true, name: true, avatar: true, userId: true } } },
+        with: { bot: { columns: { id: true, name: true, avatar: true, userId: true, job: true, instructions: true } } },
       },
     },
   });
@@ -22,7 +22,7 @@ export async function getChat(userId: string, chatId: string) {
   const { members, ...chat } = row;
   const bots = members
     .filter(({ bot }) => bot.userId === userId)
-    .map(({ bot }) => ({ id: bot.id, name: bot.name, avatar: bot.avatar }));
+    .map(({ bot }) => ({ id: bot.id, name: bot.name, avatar: bot.avatar, job: bot.job, instructions: bot.instructions }));
   if (!bots.length) throw new NotFoundException("Chat not found.");
   return { ...chat, bots };
 }

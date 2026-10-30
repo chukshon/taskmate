@@ -29,7 +29,7 @@ app.get("/chats/:chatId", requireSession, validateRequest(getChatRequest), getCh
   requestedOwner = userId;
   calls++;
   if (chatId !== "owned-chat") throw new NotFoundException("Chat not found.");
-  return { id: chatId, kind: "direct", name: null, lastMessagePreview: null, lastMessageAt: new Date(), createdAt: new Date(), bots: [{ id: "bot-1", name: "Ada", avatar: "ada" }] };
+  return { id: chatId, kind: "direct", name: null, lastMessagePreview: null, lastMessageAt: new Date(), createdAt: new Date(), bots: [{ id: "bot-1", name: "Ada", avatar: "ada", job: "Tutor", instructions: null }] };
 }));
 app.use(errorHandler);
 const server = app.listen(0, "127.0.0.1");

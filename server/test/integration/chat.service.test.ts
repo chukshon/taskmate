@@ -50,8 +50,7 @@ test("chat detail returns an owned chat and hides it from another user", async (
   const [chat] = await getChats(owner);
   const result = await getChat(owner, chat.id);
   assert.equal(result.id, chat.id);
-  assert.deepEqual(result.bots, [{ id: bot.id, name: bot.name, avatar: bot.avatar }]);
-  assert.ok(!JSON.stringify(result).includes(input.instructions));
+  assert.deepEqual(result.bots, [{ id: bot.id, name: bot.name, avatar: bot.avatar, job: bot.job, instructions: bot.instructions }]);
   await assert.rejects(getChat(otherOwner, chat.id), { statusCode: 404 });
   await assert.rejects(getChat(owner, nanoid()), { statusCode: 404 });
 });

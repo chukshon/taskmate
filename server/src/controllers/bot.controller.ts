@@ -1,12 +1,28 @@
 import type { Request, RequestHandler } from "express";
 import { HTTP_STATUS } from "@/config/http-status.config";
-import { botInsertSchema } from "@/db/schema";
+import { botInsertSchema, botFormSchema } from "@/db/schema";
+import { z } from "zod";
 import type { SessionLocals } from "@/middlewares/requireSession.middleware";
 import type { ValidatedLocals } from "@/middlewares/validateRequest.middleware";
-import { createBot } from "@/services/bot.service";
+import { createBot, updateBot } from "@/services/bot.service";
 import { getSuccessResponse } from "@/utils/api-response";
 
 export const createBotRequest = { body: botInsertSchema };
+export const updateBotRequest = {
+  params: z.object({ botId: z.string().min(1).max(128) }),
+  body: botFormSchema,
+};
+
+type UpdateBotHandler = RequestHandler<Request["params"], unknown, unknown, Request["query"], SessionLocals & ValidatedLocals<typeof updateBotRequest>>;
+
+export function updateBotHandler(saveBot = updateBot): UpdateBotHandler {
+  return async (_req, res) => {
+    const { params, body } = res.locals.validated;
+    const bot = await saveBot(res.locals.session.userId, params.botId, body);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(getSuccessResponse(bot, "Bot updated."));
+  };
+}
 
 type BotHandler = RequestHandler<
   Request["params"], unknown, unknown, Request["query"],
