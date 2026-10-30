@@ -9,7 +9,7 @@ import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 const token = configureClerkTestEnvironment();
 const { env } = await import("@/config/env.config");
 const { botInsertSchema } = await import("@/db/schema");
-const { createBotHandler, createBotRequest, updateBotHandler, updateBotRequest } = await import("@/controllers/bot.controller");
+const { createBotHandler, createBotRequest, updateBotHandler, updateBotRequest, deleteBotHandler, deleteBotRequest } = await import("@/controllers/bot.controller");
 const { NotFoundException } = await import("@/utils/app-error");
 const { requireSession } = await import("@/middlewares/requireSession.middleware");
 const { validateRequest } = await import("@/middlewares/validateRequest.middleware");
@@ -28,6 +28,12 @@ app.put("/bots/:botId", requireSession, validateRequest(updateBotRequest), updat
   saves++;
   if (botId !== "owned-bot") throw new NotFoundException("Bot not found.");
   return { ...data, id: botId, userId, instructions: data.instructions || null, sandboxId: null, createdAt: new Date("2026-10-30T00:00:00Z") };
+}));
+app.delete("/bots/:botId", requireSession, validateRequest(deleteBotRequest), deleteBotHandler(async (userId, botId) => {
+  saves++;
+  assert.equal(userId, "user_taskmate_test");
+  if (botId !== "owned-bot") throw new NotFoundException("Bot not found.");
+  return { id: botId, deletedChatIds: ["owned-chat"] };
 }));
 app.post("/bots", requireSession, validateRequest(createBotRequest), createBotHandler(async (userId, data) => {
   saves++;
@@ -147,5 +153,24 @@ test("updating bots trims values and strips server-controlled fields", async () 
 
 test("updating an unavailable bot returns not found", async () => {
   const response = await update({ name: "Ada", job: "Tutor", avatar: "face", instructions: "" }, true, "missing");
+  assert.equal(response.status, 404);
+});
+
+test("deleting bots requires authentication before any delete", async () => {
+  const previous = saves;
+  const response = await fetch(`${baseUrl}/bots/owned-bot`, { method: "DELETE" });
+  assert.equal(response.status, 401);
+  assert.equal(saves, previous);
+});
+
+test("deleting bots uses the session owner and returns deleted chat IDs", async () => {
+  const response = await fetch(`${baseUrl}/bots/owned-bot?userId=attacker`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}`, "x-user-id": "attacker" } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual((await response.json()).data, { id: "owned-bot", deletedChatIds: ["owned-chat"] });
+});
+
+test("deleting an unavailable bot returns not found", async () => {
+  const response = await fetch(`${baseUrl}/bots/missing`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}` } });
   assert.equal(response.status, 404);
 });

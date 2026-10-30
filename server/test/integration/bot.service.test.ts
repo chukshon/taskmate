@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db, pool } from "@/db";
 import { bots, chats, chatMembers } from "@/db/schema";
-import { createBot, updateBot } from "@/services/bot.service";
+import { createBot, updateBot, deleteBot } from "@/services/bot.service";
 
 const userId = `user_transaction_test_${nanoid()}`;
 const input = { name: "Transaction test", job: "Tutor", avatar: "chosen-face", instructions: "" };
@@ -51,6 +51,43 @@ test("bot updates enforce ownership and preserve the existing chat and generated
   assert.equal(updated.createdAt.toISOString(), bot.createdAt.toISOString());
   assert.deepEqual(await db.query.chatMembers.findMany({ where: eq(chatMembers.botId, bot.id) }), memberships);
   assert.equal((await db.select().from(chats).where(eq(chats.userId, userId))).length, 1);
+});
+
+test("bot deletion removes its direct chat and memberships but preserves other bots and group chats", async () => {
+  const bot = await createBot(userId, input);
+  const otherBot = await createBot(userId, { ...input, name: "Keep this bot" });
+  const [membership] = await db.query.chatMembers.findMany({ where: eq(chatMembers.botId, bot.id) });
+  const [group] = await db.insert(chats).values({ userId, kind: "group", name: "Keep this group" }).returning();
+  await db.insert(chatMembers).values([{ chatId: group.id, botId: bot.id }, { chatId: group.id, botId: otherBot.id }]);
+  await assert.rejects(deleteBot("another-user", bot.id), { statusCode: 404 });
+  assert.ok(await db.query.bots.findFirst({ where: eq(bots.id, bot.id) }));
+  const result = await deleteBot(userId, bot.id);
+  assert.deepEqual(result, { id: bot.id, deletedChatIds: [membership.chatId] });
+  assert.equal(await db.query.bots.findFirst({ where: eq(bots.id, bot.id) }), undefined);
+  assert.equal(await db.query.chats.findFirst({ where: eq(chats.id, membership.chatId) }), undefined);
+  assert.deepEqual(await db.query.chatMembers.findMany({ where: eq(chatMembers.botId, bot.id) }), []);
+  assert.ok(await db.query.bots.findFirst({ where: eq(bots.id, otherBot.id) }));
+  const groupMembers = await db.query.chatMembers.findMany({ where: eq(chatMembers.chatId, group.id) });
+  assert.deepEqual(groupMembers.map(({ botId }) => botId), [otherBot.id]);
+  await assert.rejects(deleteBot(userId, bot.id), { statusCode: 404 });
+});
+
+test("a bot deletion failure rolls back its direct chat deletion", async () => {
+  const bot = await createBot(userId, input);
+  const [membership] = await db.query.chatMembers.findMany({ where: eq(chatMembers.botId, bot.id) });
+  const failure = new Error("Injected delete failure");
+  mock.method(db, "transaction", (callback: Parameters<typeof db.transaction>[0]) => transaction(async (tx) => {
+    const remove = tx.delete.bind(tx);
+    mock.method(tx, "delete", (table: Parameters<typeof tx.delete>[0]) => {
+      if (table === bots) throw failure;
+      return remove(table);
+    });
+    return callback(tx);
+  }));
+  await assert.rejects(deleteBot(userId, bot.id), (error) => error === failure);
+  assert.ok(await db.query.bots.findFirst({ where: eq(bots.id, bot.id) }));
+  assert.ok(await db.query.chats.findFirst({ where: eq(chats.id, membership.chatId) }));
+  assert.equal((await db.query.chatMembers.findMany({ where: eq(chatMembers.botId, bot.id) })).length, 1);
 });
 
 for (const [name, failedTable] of [["chat", chats], ["membership", chatMembers]] as const) {
