@@ -19,9 +19,13 @@ export function SidebarChatList() {
       <SidebarMenu aria-label="Loading chats">
         {[0, 1, 2].map((key) => (
           <SidebarMenuItem key={key}>
-            <SidebarMenuButton render={<div />} size="lg">
-              <Skeleton className="size-8 shrink-0" />
-              <div className="flex flex-col gap-1">
+            <SidebarMenuButton
+              render={<div />}
+              size="lg"
+              className="group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
+            >
+              <Skeleton className="size-8 shrink-0 group-data-[collapsible=icon]:size-6" />
+              <div className="flex flex-col gap-1 group-data-[collapsible=icon]:hidden">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-3 w-32" />
               </div>
@@ -52,7 +56,7 @@ export function SidebarChatList() {
 
   if (!data?.length)
     return (
-      <Empty className="p-2">
+      <Empty className="p-2 group-data-[collapsible=icon]:hidden">
         <EmptyDescription>No chats yet.</EmptyDescription>
       </Empty>
     )
