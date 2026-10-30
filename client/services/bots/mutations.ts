@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api-error"
 import { botKeys } from "@/services/bots/keys"
 import { createBot } from "@/services/bots/requests"
 import type { CreateBotRequest } from "@/services/bots/types"
+import { chatKeys } from "@/services/chats/keys"
 
 export function useCreateBotMutation() {
   const queryClient = useQueryClient()
@@ -21,7 +22,10 @@ export function useCreateBotMutation() {
     onSuccess: async (bot) => {
       if (!userId) return
       queryClient.setQueryData(botKeys.detail(userId, bot.id), bot)
-      await queryClient.invalidateQueries({ queryKey: botKeys.lists(userId) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: botKeys.lists(userId) }),
+        queryClient.invalidateQueries({ queryKey: chatKeys.list(userId) }),
+      ])
     },
   })
 }

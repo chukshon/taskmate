@@ -1,0 +1,50 @@
+import assert from "node:assert/strict";
+import { once } from "node:events";
+import type { AddressInfo } from "node:net";
+import { after, before, test } from "node:test";
+import express from "express";
+import { clerkMiddleware } from "@clerk/express";
+import { configureClerkTestEnvironment } from "./helpers/clerk.js";
+
+const token = configureClerkTestEnvironment();
+const { env } = await import("@/config/env.config");
+const { getChatsHandler } = await import("@/controllers/chat.controller");
+const { requireSession } = await import("@/middlewares/requireSession.middleware");
+const { errorHandler } = await import("@/middlewares/errorHandler.middleware");
+let requestedOwner: string | undefined;
+let calls = 0;
+const app = express();
+app.use(clerkMiddleware({
+  publishableKey: env.CLERK_PUBLISHABLE_KEY, secretKey: env.CLERK_SECRET_KEY,
+  jwtKey: env.CLERK_JWT_KEY, authorizedParties: [env.CLIENT_ORIGIN],
+}));
+app.get("/chats", requireSession, getChatsHandler(async (userId) => {
+  requestedOwner = userId;
+  calls++;
+  return [];
+}));
+app.use(errorHandler);
+const server = app.listen(0, "127.0.0.1");
+let baseUrl: string;
+before(async () => {
+  if (!server.listening) await once(server, "listening");
+  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+after(() => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
+
+test("listing chats requires authentication before querying", async () => {
+  const previous = calls;
+  const response = await fetch(`${baseUrl}/chats`);
+  assert.equal(response.status, 401);
+  assert.equal(calls, previous);
+});
+
+test("chat ownership comes from the verified session rather than query parameters", async () => {
+  const response = await fetch(`${baseUrl}/chats?userId=user_attacker`, {
+    headers: { Authorization: `Bearer ${token()}`, "x-user-id": "user_attacker" },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(requestedOwner, "user_taskmate_test");
+  assert.deepEqual(await response.json(), { success: true, message: "Chats retrieved.", data: [] });
+});
