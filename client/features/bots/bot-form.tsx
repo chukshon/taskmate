@@ -6,6 +6,7 @@ import { ShuffleIcon } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
 
 import { ChatAvatar } from "@/components/chat-avatar"
+import { DeleteBotDialog } from "@/components/dialog/delete-bot-dialog"
 import { Button } from "@/components/ui/button"
 import { DialogClose, DialogFooter } from "@/components/ui/dialog"
 import {
@@ -35,15 +36,18 @@ export function BotForm({
   onSaved,
   onBusyChange,
   bot,
+  onDeleted,
 }: {
   onSaved: () => void
   onBusyChange: (busy: boolean) => void
   bot?: EditableBot
+  onDeleted: () => void
 }) {
   const createBotMutation = useCreateBotMutation()
   const updateBotMutation = useUpdateBotMutation()
   const id = useId()
   const [initialSeed] = useState(() => crypto.randomUUID())
+  const [isDeleting, setIsDeleting] = useState(false)
   const form = useForm<BotFormValues>({
     resolver: zodResolver(botFormSchema),
     defaultValues: bot
@@ -57,6 +61,7 @@ export function BotForm({
   })
   const { errors } = form.formState
   const isSubmitting =
+    isDeleting ||
     form.formState.isSubmitting ||
     createBotMutation.isPending ||
     updateBotMutation.isPending
@@ -247,6 +252,17 @@ export function BotForm({
         <FieldError role="alert">{errors.root.message}</FieldError>
       )}
       <DialogFooter>
+        {bot && (
+          <DeleteBotDialog
+            bot={bot}
+            disabled={isSubmitting}
+            onBusyChange={(busy) => {
+              setIsDeleting(busy)
+              onBusyChange(busy)
+            }}
+            onDeleted={onDeleted}
+          />
+        )}
         <DialogClose
           render={
             <Button type="button" variant="outline" disabled={isSubmitting} />

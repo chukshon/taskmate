@@ -63,6 +63,10 @@ function BotDialog({
           <BotForm
             bot={bot}
             onBusyChange={setBusy}
+            onDeleted={() => {
+              setOpen(false)
+              router.replace("/")
+            }}
             onSaved={() => {
               setOpen(false)
               router.refresh()
