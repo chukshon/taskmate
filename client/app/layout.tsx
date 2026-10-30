@@ -8,6 +8,7 @@ import { AuthHeader } from "@/components/auth-header"
 import { Toaster } from "@/components/ui/toast"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { QueryProvider } from "@/providers/query-provider"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -35,11 +36,13 @@ export default function RootLayout({
       <body>
         <ClerkProvider appearance={{ theme: shadcn }}>
           <ThemeProvider>
-            <TooltipProvider>
-              <AuthHeader />
-              {children}
-            </TooltipProvider>
-            <Toaster />
+            <QueryProvider>
+              <TooltipProvider>
+                <AuthHeader />
+                {children}
+              </TooltipProvider>
+              <Toaster />
+            </QueryProvider>
           </ThemeProvider>
         </ClerkProvider>
       </body>
