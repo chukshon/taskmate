@@ -1,7 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
-import { AuthHeader } from "@/components/auth-header"
 import { cn } from "@/lib/utils"
 import { Providers } from "@/providers"
 
@@ -29,10 +28,7 @@ export default function RootLayout({
       )}
     >
       <body>
-        <Providers>
-          <AuthHeader />
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
