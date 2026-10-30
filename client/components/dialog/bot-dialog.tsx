@@ -14,9 +14,19 @@ import {
 } from "@/components/ui/dialog"
 import { BotForm } from "@/features/bots/bot-form"
 
-function BotDialog({ children }: { children: React.ReactNode }) {
+function BotDialog({
+  children,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  children?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
   const [busy, setBusy] = useState(false)
 
   return (
@@ -26,9 +36,11 @@ function BotDialog({ children }: { children: React.ReactNode }) {
         if (!busy) setOpen(nextOpen)
       }}
     >
-      <DialogTrigger render={<Button variant="secondary" size="lg" />}>
-        {children}
-      </DialogTrigger>
+      {children && (
+        <DialogTrigger render={<Button variant="secondary" size="lg" />}>
+          {children}
+        </DialogTrigger>
+      )}
       <DialogContent
         className="max-h-[calc(100svh-2rem)] overflow-y-auto sm:max-w-md"
         showCloseButton={!busy}

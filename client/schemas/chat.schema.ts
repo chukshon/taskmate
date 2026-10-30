@@ -1,0 +1,15 @@
+import { z } from "zod"
+
+export const chatListSchema = z.array(
+  z.object({
+    id: z.string(),
+    kind: z.enum(["direct", "group"]),
+    name: z.string().nullable(),
+    lastMessagePreview: z.string().nullable(),
+    lastMessageAt: z.iso.datetime(),
+    createdAt: z.iso.datetime(),
+    bots: z
+      .array(z.object({ id: z.string(), name: z.string(), avatar: z.string() }))
+      .min(1),
+  })
+)
