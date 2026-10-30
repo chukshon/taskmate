@@ -1,14 +1,9 @@
-import { ClerkProvider } from "@clerk/nextjs"
-import { shadcn } from "@clerk/ui/themes"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
 import { AuthHeader } from "@/components/auth-header"
-import { Toaster } from "@/components/ui/toast"
-import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { QueryProvider } from "@/providers/query-provider"
+import { Providers } from "@/providers"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -34,17 +29,10 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ClerkProvider appearance={{ theme: shadcn }}>
-          <ThemeProvider>
-            <QueryProvider>
-              <TooltipProvider>
-                <AuthHeader />
-                {children}
-              </TooltipProvider>
-              <Toaster />
-            </QueryProvider>
-          </ThemeProvider>
-        </ClerkProvider>
+        <Providers>
+          <AuthHeader />
+          {children}
+        </Providers>
       </body>
     </html>
   )

@@ -1,10 +1,11 @@
 import axios from "axios"
 
+import { env } from "@/config/env"
 import { ApiError } from "@/lib/api-error"
 import type { ValidationIssue } from "@/types/api-response"
 
 export const api = axios.create({
-  baseURL: `${(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").replace(/\/$/, "")}/api/v1`,
+  baseURL: `${env.NEXT_PUBLIC_API_URL}/api/v1`,
   timeout: 15_000,
   headers: { Accept: "application/json" },
 })
