@@ -26,6 +26,10 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChatModelSelector } from "@/features/chats/chat-model-selector"
+import {
+  ChatToolCall,
+  isChatToolPart,
+} from "@/features/chats/chat-tool-call"
 import type { ChatModelSelection } from "@/schemas/ai.schema"
 import { useChatModelsQuery } from "@/services/chats/queries"
 import { useApiAuth } from "@/hooks/use-api-auth"
@@ -154,13 +158,21 @@ function ChatMessages({
                 {message.role === "user" ? "You" : botName}
               </span>
               <MessageContent>
-                {message.parts.map((part, index) =>
-                  part.type === "text" ? (
-                    <MessageResponse key={`${message.id}-${index}`}>
-                      {part.text}
-                    </MessageResponse>
-                  ) : null
-                )}
+                {message.parts.map((part, index) => {
+                  if (part.type === "text") {
+                    return (
+                      <MessageResponse key={`${message.id}-${index}`}>
+                        {part.text}
+                      </MessageResponse>
+                    )
+                  }
+                  if (isChatToolPart(part)) {
+                    return (
+                      <ChatToolCall key={part.toolCallId} part={part} />
+                    )
+                  }
+                  return null
+                })}
               </MessageContent>
             </Message>
           ))}

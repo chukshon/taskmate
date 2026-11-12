@@ -25,6 +25,7 @@
     "@ai-sdk/otel": "^1.0.170",
     "@ai-sdk/xai": "^5.0.43",
     "@clerk/express": "^2.1.85",
+    "@daytona/sdk": "^0.231.1",
     "@neon/config": "^1.9.6",
     "@neon/env": "^1.6.6",
     "@trigger.dev/sdk": "^4.8.5",

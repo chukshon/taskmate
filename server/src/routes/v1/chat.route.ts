@@ -5,7 +5,11 @@ import {
   startChatSessionRequest,
 } from "@/validators/chat-session.validator";
 import { Router } from "express";
-import { getChatHandler, getChatsHandler } from "@/controllers/chat.controller";
+import {
+  getChatDesktopUrlHandler,
+  getChatHandler,
+  getChatsHandler,
+} from "@/controllers/chat.controller";
 import { requireSession } from "@/middlewares/requireSession.middleware";
 import { validateRequest } from "@/middlewares/validateRequest.middleware";
 import {
@@ -19,6 +23,12 @@ export const chatRoutes = Router();
 chatRoutes.get("/", requireSession, getChatsHandler());
 chatRoutes.get("/models", requireSession, getChatModelsHandler);
 chatRoutes.get("/:chatId", requireSession, validateRequest(getChatRequest), getChatHandler());
+chatRoutes.get(
+  "/:chatId/desktop",
+  requireSession,
+  validateRequest(getChatRequest),
+  getChatDesktopUrlHandler(),
+);
 chatRoutes.post(
   "/:chatId/session",
   requireSession,

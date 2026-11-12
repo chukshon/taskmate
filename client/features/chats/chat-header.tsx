@@ -1,9 +1,27 @@
 import { MonitorIcon } from "lucide-react"
 
 import { ChatAvatar } from "@/components/chat-avatar"
+import { useDesktopPanel } from "@/components/desktop-panel"
 import { Button } from "@/components/ui/button"
 import { BotDialog } from "@/components/dialog/bot-dialog"
 import type { ChatDetail } from "@/services/chats/types"
+
+function DesktopButton() {
+  const desktopPanel = useDesktopPanel()
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label="Desktop"
+      aria-pressed={desktopPanel.open}
+      onClick={desktopPanel.toggle}
+    >
+      <MonitorIcon />
+    </Button>
+  )
+}
 
 export function ChatHeader({ chat }: { chat: ChatDetail }) {
   const bot = chat.bots[0]
@@ -24,9 +42,7 @@ export function ChatHeader({ chat }: { chat: ChatDetail }) {
         <ChatAvatar seed={bot.avatar} className="size-6" />
         <span className="truncate text-sm font-semibold">{bot.name}</span>
       </BotDialog>
-      <Button type="button" variant="ghost" size="icon" aria-label="Desktop">
-        <MonitorIcon />
-      </Button>
+      <DesktopButton />
     </header>
   )
 }

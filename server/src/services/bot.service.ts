@@ -1,10 +1,28 @@
+import { nanoid } from "nanoid";
 import { db } from "@/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { bots, chatMembers, chats, type BotInsert } from "@/db/schema";
 import type { BotFormValues } from "@/db/bot-schema";
+import {
+  createBotSandbox,
+  deleteBotSandbox,
+} from "@/services/daytona.service";
 import { InternalServerException, NotFoundException } from "@/utils/app-error";
 
-export async function deleteBot(userId: string, botId: string) {
+export async function deleteBot(
+  userId: string,
+  botId: string,
+  removeSandbox: typeof deleteBotSandbox = deleteBotSandbox,
+) {
+  const [owned] = await db
+    .select({ sandboxId: bots.sandboxId })
+    .from(bots)
+    .where(and(eq(bots.id, botId), eq(bots.userId, userId)));
+  if (!owned) throw new NotFoundException("Bot not found.");
+
+  // Sandbox first so a Daytona failure leaves the bot for a retry.
+  await removeSandbox(owned.sandboxId);
+
   return db.transaction(async (tx) => {
     const owner = and(eq(bots.id, botId), eq(bots.userId, userId));
     const [bot] = await tx
@@ -53,33 +71,53 @@ export async function updateBot(
   return bot;
 }
 
-export async function createBot(userId: string, data: BotInsert) {
-  return db.transaction(async (tx) => {
-    const [bot] = await tx
-      .insert(bots)
-      .values({
-        ...data,
-        userId,
-        instructions: data.instructions || null,
-      })
-      .returning();
+export async function createBot(
+  userId: string,
+  data: BotInsert,
+  {
+    createSandbox = createBotSandbox,
+    removeSandbox = deleteBotSandbox,
+  }: {
+    createSandbox?: typeof createBotSandbox;
+    removeSandbox?: typeof deleteBotSandbox;
+  } = {},
+) {
+  const id = nanoid();
+  const sandboxId = await createSandbox(id);
 
-    if (!bot) throw new InternalServerException("Could not create the bot.");
+  try {
+    return await db.transaction(async (tx) => {
+      const [bot] = await tx
+        .insert(bots)
+        .values({
+          ...data,
+          id,
+          userId,
+          instructions: data.instructions || null,
+          sandboxId,
+        })
+        .returning();
 
-    const [chat] = await tx
-      .insert(chats)
-      .values({
-        userId,
-        kind: "direct",
-        name: null,
-      })
-      .returning({ id: chats.id });
+      if (!bot) throw new InternalServerException("Could not create the bot.");
 
-    if (!chat)
-      throw new InternalServerException("Could not create the bot's chat.");
+      const [chat] = await tx
+        .insert(chats)
+        .values({
+          userId,
+          kind: "direct",
+          name: null,
+        })
+        .returning({ id: chats.id });
 
-    await tx.insert(chatMembers).values({ chatId: chat.id, botId: bot.id });
+      if (!chat)
+        throw new InternalServerException("Could not create the bot's chat.");
 
-    return bot;
-  });
+      await tx.insert(chatMembers).values({ chatId: chat.id, botId: bot.id });
+
+      return bot;
+    });
+  } catch (error) {
+    await removeSandbox(sandboxId).catch(() => {});
+    throw error;
+  }
 }
