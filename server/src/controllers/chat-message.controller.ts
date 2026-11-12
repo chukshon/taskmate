@@ -31,6 +31,7 @@ export function sendChatMessageHandler(
         chat,
         body.messages,
         controller.signal,
+        { provider: body.provider, model: body.model },
       );
       result.pipeUIMessageStreamToResponse(res, {
         headers: { "Cache-Control": "no-store" },
