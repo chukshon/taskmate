@@ -183,8 +183,12 @@ export function createSandboxTools(
 
     recall: tool({
       description:
-        "Read your memory: the notes you have saved across all your conversations with the person, including ones you cannot see from here. Call this before answering any question about the person, their preferences, their projects or anything said or decided earlier, and always before saying you do not know something or asking them to tell you again.",
-      inputSchema: z.object({}),
+        "Read your MEMORY.md notes from every conversation with this person. You MUST call this before answering any question about them, their pets, preferences, projects, earlier decisions, or anything they told you before — including in another chat. Never say you do not know, and never ask them to repeat themselves, until recall has run in this turn. Do not use bash or file tools to read memory; use this tool.",
+      inputSchema: z.object({
+        reason: z
+          .string()
+          .describe("Why you need your memory for this answer"),
+      }),
       execute: async () => {
         const sandbox = await getSandbox();
         return { memory: truncate(await readBotMemory(sandbox)) };
@@ -193,7 +197,7 @@ export function createSandboxTools(
 
     remember: tool({
       description:
-        "Save a note to your memory, so that you know it in every conversation with the person, not only this one. Call this whenever they ask you to remember something, and whenever you learn something worth knowing later: facts about them and their work, their preferences, decisions, standing instructions. Saying you will remember something does nothing unless you call this.",
+        "Append a note to MEMORY.md so you still know it in other chats (including group chats). You MUST call this in the same turn whenever they tell you a lasting fact about themselves — name, pet, preference, project, decision, standing instruction — or ask you to remember something. Saying you noted it, will remember it, or writing it only in your reply does nothing unless you call this. Do not use bash or file tools to write memory; use this tool.",
       inputSchema: z.object({
         note: z
           .string()
