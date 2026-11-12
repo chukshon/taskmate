@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -15,17 +16,26 @@ import { Spinner } from "@/components/ui/spinner"
 import { GroupChatForm } from "@/features/chats/group-chat-form"
 import { useBotsQuery } from "@/services/bots/queries"
 
+type EditableGroupChat = {
+  id: string
+  name: string | null
+  bots: { id: string }[]
+}
+
 function GroupChatDialog({
   children,
   open: controlledOpen,
   onOpenChange,
   trigger,
+  chat,
 }: {
   children?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
   trigger?: React.ReactElement
+  chat?: EditableGroupChat
 }) {
+  const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const open = controlledOpen ?? uncontrolledOpen
   const setOpen = onOpenChange ?? setUncontrolledOpen
@@ -53,9 +63,13 @@ function GroupChatDialog({
         showCloseButton={!busy}
       >
         <DialogHeader>
-          <DialogTitle>New group chat</DialogTitle>
+          <DialogTitle>
+            {chat ? "Edit group chat" : "New group chat"}
+          </DialogTitle>
           <DialogDescription>
-            Name the group and pick which bots are in it.
+            {chat
+              ? "Change its name or which bots are in it."
+              : "Name the group and pick which bots are in it."}
           </DialogDescription>
         </DialogHeader>
         {open &&
@@ -84,6 +98,7 @@ function GroupChatDialog({
             </div>
           ) : (
             <GroupChatForm
+              chat={chat}
               bots={bots.map(({ id, name, avatar }) => ({
                 id,
                 name,
@@ -91,6 +106,10 @@ function GroupChatDialog({
               }))}
               onBusyChange={setBusy}
               onSaved={() => setOpen(false)}
+              onDeleted={() => {
+                setOpen(false)
+                router.replace("/")
+              }}
             />
           ))}
       </DialogContent>

@@ -96,3 +96,36 @@ export async function createGroupChat(
   }
   return chat
 }
+
+export async function updateGroupChat(
+  chatId: string,
+  values: GroupChatInsert,
+  token: string
+): Promise<{ id: string; name: string | null }> {
+  const response = await api.put<
+    ApiResponse<{ id: string; name: string | null }>
+  >(`/chats/${encodeURIComponent(chatId)}`, values, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const chat = getApiData(response.data)
+  if (typeof chat?.id !== "string") {
+    throw new ApiError("The API returned an unexpected group chat.")
+  }
+  return chat
+}
+
+export async function deleteGroupChat(
+  chatId: string,
+  token: string
+): Promise<{ id: string; name: string | null }> {
+  const response = await api.delete<
+    ApiResponse<{ id: string; name: string | null }>
+  >(`/chats/${encodeURIComponent(chatId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const chat = getApiData(response.data)
+  if (typeof chat?.id !== "string") {
+    throw new ApiError("The API returned an unexpected delete response.")
+  }
+  return chat
+}
