@@ -97,19 +97,17 @@ export const SchemaDisplayPath = ({
 }: SchemaDisplayPathProps) => {
   const { path } = useContext(SchemaDisplayContext);
 
-  // Highlight path parameters
-  const highlightedPath = path.replaceAll(
-    /\{([^}]+)\}/g,
-    '<span class="text-blue-600 dark:text-blue-400">{$1}</span>'
-  );
-
   return (
     <span
       className={cn("font-mono text-sm", className)}
-      // oxlint-disable-next-line eslint-plugin-react(no-danger)
-      dangerouslySetInnerHTML={{ __html: children ?? highlightedPath }}
       {...props}
-    />
+    >
+      {children ?? path.split(/(\{[^}]+\})/g).map((part, index) =>
+        part.startsWith("{") && part.endsWith("}") ? (
+          <span className="text-primary" key={index}>{part}</span>
+        ) : part
+      )}
+    </span>
   );
 };
 

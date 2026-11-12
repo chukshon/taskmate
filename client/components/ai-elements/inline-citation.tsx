@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import type { CarouselApi } from "@/components/ui/carousel";
 import {
@@ -19,7 +21,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useState,
 } from "react";
 
@@ -50,7 +51,7 @@ export const InlineCitationText = ({
 export type InlineCitationCardProps = ComponentProps<typeof HoverCard>;
 
 export const InlineCitationCard = (props: InlineCitationCardProps) => (
-  <HoverCard closeDelay={0} openDelay={0} {...props} />
+  <HoverCard {...props} />
 );
 
 export type InlineCitationCardTriggerProps = ComponentProps<typeof Badge> & {
@@ -62,7 +63,7 @@ export const InlineCitationCardTrigger = ({
   className,
   ...props
 }: InlineCitationCardTriggerProps) => (
-  <HoverCardTrigger render={<Badge className={cn("ml-1 rounded-full", className)} variant="secondary" {...props} />}>{sources[0] ? (
+  <HoverCardTrigger delay={0} closeDelay={0} render={<Badge className={cn("ml-1 rounded-full", className)} variant="secondary" {...props} />}>{sources[0] ? (
             <>
               {new URL(sources[0]).hostname}{" "}
               {sources.length > 1 && `+${sources.length - 1}`}
@@ -147,30 +148,18 @@ export const InlineCitationCarouselIndex = ({
   ...props
 }: InlineCitationCarouselIndexProps) => {
   const api = useCarouselApi();
-  const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
-
-  const syncState = useCallback(() => {
-    if (!api) {
-      return;
-    }
-    setCount(api.scrollSnapList().length);
-    setCurrent(api.selectedScrollSnap() + 1);
-  }, [api]);
-
-  useEffect(() => {
-    if (!api) {
-      return;
-    }
-
-    syncState();
-
-    api.on("select", syncState);
-
-    return () => {
-      api.off("select", syncState);
-    };
-  }, [api, syncState]);
+  const index = useSyncExternalStore(
+    useCallback((onChange) => {
+      api?.on("select", onChange);
+      api?.on("reInit", onChange);
+      return () => {
+        api?.off("select", onChange);
+        api?.off("reInit", onChange);
+      };
+    }, [api]),
+    () => api ? `${api.selectedScrollSnap() + 1}/${api.scrollSnapList().length}` : "0/0",
+    () => "0/0",
+  );
 
   return (
     <div
@@ -180,7 +169,7 @@ export const InlineCitationCarouselIndex = ({
       )}
       {...props}
     >
-      {children ?? `${current}/${count}`}
+      {children ?? index}
     </div>
   );
 };
