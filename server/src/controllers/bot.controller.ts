@@ -1,18 +1,10 @@
+import type { createBotRequest, updateBotRequest, deleteBotRequest } from "@/validators/bot.validator";
 import type { Request, RequestHandler } from "express";
 import { HTTP_STATUS } from "@/config/http-status.config";
-import { botInsertSchema, botFormSchema } from "@/db/schema";
-import { z } from "zod";
 import type { SessionLocals } from "@/middlewares/requireSession.middleware";
 import type { ValidatedLocals } from "@/middlewares/validateRequest.middleware";
 import { createBot, updateBot, deleteBot } from "@/services/bot.service";
 import { getSuccessResponse } from "@/utils/api-response";
-
-export const createBotRequest = { body: botInsertSchema };
-export const updateBotRequest = {
-  params: z.object({ botId: z.string().min(1).max(128) }),
-  body: botFormSchema,
-};
-export const deleteBotRequest = { params: updateBotRequest.params };
 
 type DeleteBotHandler = RequestHandler<
   Request["params"],
