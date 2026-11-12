@@ -11,6 +11,8 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().startsWith("sk_"),
   CLERK_JWT_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+  OPENAI_API_KEY: z.preprocess((value) => value === "" ? undefined : value, z.string().trim().min(1).optional()),
+  OPENAI_MODEL: z.string().trim().min(1).default("gpt-5-mini"),
 });
 
 const result = envSchema.safeParse({
