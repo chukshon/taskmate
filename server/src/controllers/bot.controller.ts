@@ -1,10 +1,26 @@
 import type { createBotRequest, updateBotRequest, deleteBotRequest } from "@/validators/bot.validator";
 import type { Request, RequestHandler } from "express";
 import { HTTP_STATUS } from "@/config/http-status.config";
-import type { SessionLocals } from "@/middlewares/requireSession.middleware";
+import type {
+  SessionHandler,
+  SessionLocals,
+} from "@/middlewares/requireSession.middleware";
 import type { ValidatedLocals } from "@/middlewares/validateRequest.middleware";
-import { createBot, updateBot, deleteBot } from "@/services/bot.service";
+import {
+  createBot,
+  deleteBot,
+  getBots,
+  updateBot,
+} from "@/services/bot.service";
 import { getSuccessResponse } from "@/utils/api-response";
+
+export function getBotsHandler(listBots = getBots): SessionHandler {
+  return async (_req, res) => {
+    const bots = await listBots(res.locals.session.userId);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(getSuccessResponse(bots, "Bots retrieved."));
+  };
+}
 
 type DeleteBotHandler = RequestHandler<
   Request["params"],
