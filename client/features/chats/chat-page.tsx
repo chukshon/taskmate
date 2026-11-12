@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ChatHeader } from "@/features/chats/chat-header"
+import { ChatConversation } from "@/features/chats/chat-conversation"
 import { ApiError } from "@/lib/api-error"
 import { useChatQuery } from "@/services/chats/queries"
 
@@ -49,5 +50,14 @@ export function ChatFeature({ chatId }: { chatId: string }) {
     )
   }
 
-  return <ChatHeader chat={data} />
+  return (
+    <div className="flex h-svh min-h-0 flex-col overflow-hidden">
+      <ChatHeader chat={data} />
+      <ChatConversation
+        key={chatId}
+        chatId={chatId}
+        botName={data.bots[0].name}
+      />
+    </div>
+  )
 }
