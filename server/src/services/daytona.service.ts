@@ -28,3 +28,17 @@ export async function getBotSandbox(sandboxId: string) {
   if (sandbox.state !== "started") await sandbox.start();
   return sandbox;
 }
+
+const VNC_PORT = 6080;
+
+/** Websocket URL for the bot's desktop preview (noVNC). */
+export async function getBotDesktopUrl(sandboxId: string) {
+  const sandbox = await getBotSandbox(sandboxId);
+  const { status } = await sandbox.computerUse.getStatus();
+  if (status !== "active") await sandbox.computerUse.start();
+
+  const preview = await sandbox.getSignedPreviewUrl(VNC_PORT, 60 * 60);
+  const url = new URL("/websockify", preview.url);
+  url.protocol = "wss:";
+  return url.toString();
+}

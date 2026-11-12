@@ -39,7 +39,7 @@ app.post("/chats/:chatId/messages", requireSession, validateRequest(sendChatMess
   lookups++;
   assert.equal(userId, "user_taskmate_test");
   if (chatId !== "owned-chat") throw new NotFoundException("Chat not found.");
-  return { id: chatId, kind: "direct", name: null, lastMessagePreview: null, lastMessageAt: new Date(), createdAt: new Date(), bots: [{ id: "bot-1", name: "Ada", avatar: "ada", job: "Tutor", instructions: null }] };
+  return { id: chatId, kind: "direct", name: null, lastMessagePreview: null, lastMessageAt: new Date(), createdAt: new Date(), bots: [{ id: "bot-1", name: "Ada", avatar: "ada", job: "Tutor", instructions: null, sandboxId: null }] };
 }, async (_chat, messages, signal, selection) => {
   generations++;
   lastSelection = selection;

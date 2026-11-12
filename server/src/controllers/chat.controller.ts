@@ -1,6 +1,10 @@
 import type { getChatRequest } from "@/validators/chat.validator";
 import type { SessionHandler } from "@/middlewares/requireSession.middleware";
-import { getChat, getChats } from "@/services/chat.service";
+import {
+  getChat,
+  getChatDesktopUrl,
+  getChats,
+} from "@/services/chat.service";
 import { getSuccessResponse } from "@/utils/api-response";
 import type { Request, RequestHandler } from "express";
 import type { SessionLocals } from "@/middlewares/requireSession.middleware";
@@ -22,5 +26,16 @@ export function getChatsHandler(listChats = getChats): SessionHandler {
     const chats = await listChats(res.locals.session.userId);
     res.setHeader("Cache-Control", "no-store");
     res.json(getSuccessResponse(chats, "Chats retrieved."));
+  };
+}
+
+export function getChatDesktopUrlHandler(
+  resolveDesktopUrl = getChatDesktopUrl,
+): ChatHandler {
+  return async (_req, res) => {
+    const { chatId } = res.locals.validated.params;
+    const url = await resolveDesktopUrl(res.locals.session.userId, chatId);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(getSuccessResponse({ url }, "Desktop URL retrieved."));
   };
 }

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { chatMembers, chats } from "@/db/schema";
+import { getBotDesktopUrl } from "@/services/daytona.service";
 import { NotFoundException } from "@/utils/app-error";
 
 export async function getChat(userId: string, chatId: string) {
@@ -14,7 +15,19 @@ export async function getChat(userId: string, chatId: string) {
       members: {
         columns: {},
         orderBy: [asc(chatMembers.joinedAt), asc(chatMembers.botId)],
-        with: { bot: { columns: { id: true, name: true, avatar: true, userId: true, job: true, instructions: true } } },
+        with: {
+          bot: {
+            columns: {
+              id: true,
+              name: true,
+              avatar: true,
+              userId: true,
+              job: true,
+              instructions: true,
+              sandboxId: true,
+            },
+          },
+        },
       },
     },
   });
@@ -22,7 +35,14 @@ export async function getChat(userId: string, chatId: string) {
   const { members, ...chat } = row;
   const bots = members
     .filter(({ bot }) => bot.userId === userId)
-    .map(({ bot }) => ({ id: bot.id, name: bot.name, avatar: bot.avatar, job: bot.job, instructions: bot.instructions }));
+    .map(({ bot }) => ({
+      id: bot.id,
+      name: bot.name,
+      avatar: bot.avatar,
+      job: bot.job,
+      instructions: bot.instructions,
+      sandboxId: bot.sandboxId,
+    }));
   if (!bots.length) throw new NotFoundException("Chat not found.");
   return { ...chat, bots };
 }
@@ -50,4 +70,13 @@ export async function getChats(userId: string) {
       .map(({ bot }) => ({ id: bot.id, name: bot.name, avatar: bot.avatar }));
     return bots.length ? [{ ...chat, bots }] : [];
   });
+}
+
+/** Websocket URL for the direct-chat bot's Daytona desktop preview. */
+export async function getChatDesktopUrl(userId: string, chatId: string) {
+  const chat = await getChat(userId, chatId);
+  if (chat.kind !== "direct") throw new NotFoundException("Chat not found.");
+  const sandboxId = chat.bots[0]?.sandboxId;
+  if (!sandboxId) throw new NotFoundException("This bot has no sandbox.");
+  return getBotDesktopUrl(sandboxId);
 }
