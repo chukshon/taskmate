@@ -41,7 +41,7 @@ app.post("/bots", requireSession, validateRequest(createBotRequest), createBotHa
   if (data.name === "Fail") throw new Error("Private database details");
   return {
     ...data, id: "generated_id", userId, avatar: data.avatar ?? "generated_avatar",
-    instructions: data.instructions || null, sandboxId: null, createdAt: new Date("2026-10-30T00:00:00Z"),
+    instructions: data.instructions || null, sandboxId: "sandbox_generated", createdAt: new Date("2026-10-30T00:00:00Z"),
   };
 }));
 app.use(errorHandler);
@@ -93,7 +93,7 @@ test("creation trims input and takes identity and generated fields from the serv
   assert.equal(body.data.avatar, "chosen-face");
   assert.equal(body.data.userId, "user_taskmate_test");
   assert.equal(body.data.id, "generated_id");
-  assert.equal(body.data.sandboxId, null);
+  assert.equal(body.data.sandboxId, "sandbox_generated");
 });
 
 test("optional instructions and avatar can be omitted", async () => {
