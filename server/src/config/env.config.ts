@@ -1,6 +1,11 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const optionalAPIKey = z.preprocess(
+  (value) => typeof value === "string" && !value.trim() ? undefined : value,
+  z.string().trim().min(1).optional(),
+);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   HOST: z.string().min(1).default("0.0.0.0"),
@@ -11,6 +16,10 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().startsWith("sk_"),
   CLERK_JWT_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
+  OPENAI_API_KEY: optionalAPIKey,
+  GOOGLE_GENERATIVE_AI_API_KEY: optionalAPIKey,
+  XAI_API_KEY: optionalAPIKey,
+  ANTHROPIC_API_KEY: optionalAPIKey,
 });
 
 const result = envSchema.safeParse({

@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { createBotHandler, createBotRequest, updateBotHandler, updateBotRequest, deleteBotHandler, deleteBotRequest } from "@/controllers/bot.controller";
+import { createBotHandler, updateBotHandler, deleteBotHandler } from "@/controllers/bot.controller";
+import { createBotRequest, updateBotRequest, deleteBotRequest } from "@/validators/bot.validator";
 import { requireSession } from "@/middlewares/requireSession.middleware";
 import { validateRequest } from "@/middlewares/validateRequest.middleware";
 

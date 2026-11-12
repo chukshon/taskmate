@@ -4,6 +4,27 @@ import { getApiData } from "@/lib/api-response"
 import { chatListSchema, chatDetailSchema } from "@/schemas/chat.schema"
 import type { ChatSummary, ChatDetail } from "@/services/chats/types"
 import type { ApiResponse } from "@/types/api-response"
+import {
+  chatModelCatalogSchema,
+  type ChatModelCatalog,
+} from "@/schemas/ai.schema"
+
+export async function getChatModels(
+  token: string,
+  signal?: AbortSignal
+): Promise<ChatModelCatalog> {
+  const response = await api.get<ApiResponse<ChatModelCatalog>>(
+    "/chats/models",
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    }
+  )
+  const result = chatModelCatalogSchema.safeParse(getApiData(response.data))
+  if (!result.success)
+    throw new ApiError("The API returned an unexpected model catalogue.")
+  return result.data
+}
 
 export async function getChat(
   chatId: string,

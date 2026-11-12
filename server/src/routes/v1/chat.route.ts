@@ -1,8 +1,14 @@
+import { getChatRequest } from "@/validators/chat.validator";
+import { sendChatMessageRequest } from "@/validators/chat-message.validator";
 import { Router } from "express";
-import { getChatHandler, getChatRequest, getChatsHandler } from "@/controllers/chat.controller";
+import { getChatHandler, getChatsHandler } from "@/controllers/chat.controller";
 import { requireSession } from "@/middlewares/requireSession.middleware";
 import { validateRequest } from "@/middlewares/validateRequest.middleware";
+import { sendChatMessageHandler } from "@/controllers/chat-message.controller";
+import { getChatModelsHandler } from "@/controllers/ai-model.controller";
 
 export const chatRoutes = Router();
 chatRoutes.get("/", requireSession, getChatsHandler());
+chatRoutes.get("/models", requireSession, getChatModelsHandler);
 chatRoutes.get("/:chatId", requireSession, validateRequest(getChatRequest), getChatHandler());
+chatRoutes.post("/:chatId/messages", requireSession, validateRequest(sendChatMessageRequest), sendChatMessageHandler());
