@@ -10,8 +10,9 @@ export function createChatTransport(
     headers: async () => ({
       Authorization: `Bearer ${await getAccessToken()}`,
     }),
-    prepareSendMessagesRequest: ({ messages }) => ({
+    prepareSendMessagesRequest: ({ messages, body }) => ({
       body: {
+        ...body,
         messages: messages
           .map(({ id, role, parts }) => ({
             id,

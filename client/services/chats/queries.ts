@@ -3,8 +3,18 @@
 import { useQuery } from "@tanstack/react-query"
 import { useApiAuth } from "@/hooks/use-api-auth"
 import { chatKeys } from "@/services/chats/keys"
-import { getChat, getChats } from "@/services/chats/requests"
+import { getChat, getChats, getChatModels } from "@/services/chats/requests"
 import { ApiError } from "@/lib/api-error"
+
+export function useChatModelsQuery() {
+  const { getAccessToken, userId, isLoaded, isSignedIn } = useApiAuth()
+  return useQuery({
+    queryKey: chatKeys.models(userId),
+    queryFn: async ({ signal }) =>
+      getChatModels(await getAccessToken(), signal),
+    enabled: isLoaded && !!isSignedIn,
+  })
+}
 
 export function useChatQuery(chatId: string) {
   const { getAccessToken, userId, isLoaded, isSignedIn } = useApiAuth()
