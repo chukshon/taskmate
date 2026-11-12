@@ -6,6 +6,7 @@ import { ShuffleIcon } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
 
 import { ChatAvatar } from "@/components/chat-avatar"
+import { DeleteBotDialog } from "@/components/dialog/delete-bot-dialog"
 import { Button } from "@/components/ui/button"
 import { DialogClose, DialogFooter } from "@/components/ui/dialog"
 import {
@@ -24,32 +25,58 @@ import { toast } from "@/components/ui/toast"
 import { botPresets } from "@/constants/bot"
 import { ApiError } from "@/lib/api-error"
 import { botFormSchema, type BotFormValues } from "@/schemas/bot.schema"
-import { useCreateBotMutation } from "@/services/bots/mutations"
+import {
+  useCreateBotMutation,
+  useUpdateBotMutation,
+} from "@/services/bots/mutations"
+
+export type EditableBot = BotFormValues & { id: string }
 
 export function BotForm({
   onSaved,
   onBusyChange,
+  bot,
+  onDeleted,
 }: {
   onSaved: () => void
   onBusyChange: (busy: boolean) => void
+  bot?: EditableBot
+  onDeleted: () => void
 }) {
   const createBotMutation = useCreateBotMutation()
+  const updateBotMutation = useUpdateBotMutation()
   const id = useId()
   const [initialSeed] = useState(() => crypto.randomUUID())
+  const [isDeleting, setIsDeleting] = useState(false)
   const form = useForm<BotFormValues>({
     resolver: zodResolver(botFormSchema),
-    defaultValues: { name: "", avatar: initialSeed, job: "", instructions: "" },
+    defaultValues: bot
+      ? {
+          name: bot.name,
+          avatar: bot.avatar,
+          job: bot.job,
+          instructions: bot.instructions,
+        }
+      : { name: "", avatar: initialSeed, job: "", instructions: "" },
   })
   const { errors } = form.formState
   const isSubmitting =
-    form.formState.isSubmitting || createBotMutation.isPending
+    isDeleting ||
+    form.formState.isSubmitting ||
+    createBotMutation.isPending ||
+    updateBotMutation.isPending
 
   const onSubmit = form.handleSubmit(async (values) => {
     onBusyChange(true)
     form.clearErrors("root")
     try {
-      const bot = await createBotMutation.mutateAsync(values)
-      toast.add({ type: "success", title: `${bot.name} is ready` })
+      const saved = bot
+        ? await updateBotMutation.mutateAsync({ botId: bot.id, values })
+        : await createBotMutation.mutateAsync(values)
+      toast.add({
+        type: "success",
+        title: bot ? `${saved.name} updated` : `${saved.name} is ready`,
+      })
       onSaved()
     } catch (error) {
       if (error instanceof ApiError) {
@@ -69,7 +96,13 @@ export function BotForm({
         message:
           error instanceof Error
             ? error.message
-            : "Could not create the bot. Try again.",
+            : "Could not save the bot. Try again.",
+      })
+      toast.add({
+        type: "error",
+        title: "Could not save the bot",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
       })
     } finally {
       onBusyChange(false)
@@ -219,6 +252,17 @@ export function BotForm({
         <FieldError role="alert">{errors.root.message}</FieldError>
       )}
       <DialogFooter>
+        {bot && (
+          <DeleteBotDialog
+            bot={bot}
+            disabled={isSubmitting}
+            onBusyChange={(busy) => {
+              setIsDeleting(busy)
+              onBusyChange(busy)
+            }}
+            onDeleted={onDeleted}
+          />
+        )}
         <DialogClose
           render={
             <Button type="button" variant="outline" disabled={isSubmitting} />
@@ -228,7 +272,7 @@ export function BotForm({
         </DialogClose>
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting && <Spinner data-icon="inline-start" />}
-          Create bot
+          {bot ? "Save changes" : "Create bot"}
         </Button>
       </DialogFooter>
     </form>

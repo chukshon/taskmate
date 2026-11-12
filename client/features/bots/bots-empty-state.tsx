@@ -18,7 +18,7 @@ export function BotsEmptyState({ avatarSeed }: { avatarSeed: string }) {
         <EmptyMedia>
           <ChatAvatar seed={avatarSeed} className="size-10" />
         </EmptyMedia>
-        <EmptyTitle>Meet your first bot</EmptyTitle>
+        <EmptyTitle>Meet your first bot and task mate</EmptyTitle>
         <EmptyDescription>
           Every bot gets its own personality, memory, and face. Spin one up and
           start the conversation.

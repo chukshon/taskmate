@@ -8,7 +8,9 @@ import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 
 const token = configureClerkTestEnvironment();
 const { env } = await import("@/config/env.config");
-const { getChatsHandler } = await import("@/controllers/chat.controller");
+const { getChatsHandler, getChatHandler, getChatRequest } = await import("@/controllers/chat.controller");
+const { validateRequest } = await import("@/middlewares/validateRequest.middleware");
+const { NotFoundException } = await import("@/utils/app-error");
 const { requireSession } = await import("@/middlewares/requireSession.middleware");
 const { errorHandler } = await import("@/middlewares/errorHandler.middleware");
 let requestedOwner: string | undefined;
@@ -22,6 +24,12 @@ app.get("/chats", requireSession, getChatsHandler(async (userId) => {
   requestedOwner = userId;
   calls++;
   return [];
+}));
+app.get("/chats/:chatId", requireSession, validateRequest(getChatRequest), getChatHandler(async (userId, chatId) => {
+  requestedOwner = userId;
+  calls++;
+  if (chatId !== "owned-chat") throw new NotFoundException("Chat not found.");
+  return { id: chatId, kind: "direct", name: null, lastMessagePreview: null, lastMessageAt: new Date(), createdAt: new Date(), bots: [{ id: "bot-1", name: "Ada", avatar: "ada", job: "Tutor", instructions: null }] };
 }));
 app.use(errorHandler);
 const server = app.listen(0, "127.0.0.1");
@@ -47,4 +55,25 @@ test("chat ownership comes from the verified session rather than query parameter
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(requestedOwner, "user_taskmate_test");
   assert.deepEqual(await response.json(), { success: true, message: "Chats retrieved.", data: [] });
+});
+
+test("chat detail requires authentication before querying", async () => {
+  const previous = calls;
+  const response = await fetch(`${baseUrl}/chats/owned-chat`);
+  assert.equal(response.status, 401);
+  assert.equal(calls, previous);
+});
+
+test("chat detail uses the session owner and returns a private response", async () => {
+  const response = await fetch(`${baseUrl}/chats/owned-chat?userId=user_attacker`, { headers: { Authorization: `Bearer ${token()}` } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(requestedOwner, "user_taskmate_test");
+  const body = await response.json();
+  assert.equal(body.data.id, "owned-chat");
+});
+
+test("unavailable chat detail returns 404", async () => {
+  const response = await fetch(`${baseUrl}/chats/missing`, { headers: { Authorization: `Bearer ${token()}` } });
+  assert.equal(response.status, 404);
 });

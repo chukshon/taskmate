@@ -1,6 +1,7 @@
 import type { BotFormValues } from "@/schemas/bot.schema"
 
 export type CreateBotRequest = BotFormValues
+export type DeletedBot = { id: string; deletedChatIds: string[] }
 
 export type Bot = Omit<BotFormValues, "instructions"> & {
   id: string

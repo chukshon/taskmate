@@ -9,7 +9,8 @@ import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 const token = configureClerkTestEnvironment();
 const { env } = await import("@/config/env.config");
 const { botInsertSchema } = await import("@/db/schema");
-const { createBotHandler, createBotRequest } = await import("@/controllers/bot.controller");
+const { createBotHandler, createBotRequest, updateBotHandler, updateBotRequest, deleteBotHandler, deleteBotRequest } = await import("@/controllers/bot.controller");
+const { NotFoundException } = await import("@/utils/app-error");
 const { requireSession } = await import("@/middlewares/requireSession.middleware");
 const { validateRequest } = await import("@/middlewares/validateRequest.middleware");
 const { errorHandler } = await import("@/middlewares/errorHandler.middleware");
@@ -22,6 +23,17 @@ app.use(clerkMiddleware({
   secretKey: env.CLERK_SECRET_KEY,
   jwtKey: env.CLERK_JWT_KEY,
   authorizedParties: [env.CLIENT_ORIGIN],
+}));
+app.put("/bots/:botId", requireSession, validateRequest(updateBotRequest), updateBotHandler(async (userId, botId, data) => {
+  saves++;
+  if (botId !== "owned-bot") throw new NotFoundException("Bot not found.");
+  return { ...data, id: botId, userId, instructions: data.instructions || null, sandboxId: null, createdAt: new Date("2026-10-30T00:00:00Z") };
+}));
+app.delete("/bots/:botId", requireSession, validateRequest(deleteBotRequest), deleteBotHandler(async (userId, botId) => {
+  saves++;
+  assert.equal(userId, "user_taskmate_test");
+  if (botId !== "owned-bot") throw new NotFoundException("Bot not found.");
+  return { id: botId, deletedChatIds: ["owned-chat"] };
 }));
 app.post("/bots", requireSession, validateRequest(createBotRequest), createBotHandler(async (userId, data) => {
   saves++;
@@ -104,4 +116,61 @@ test("save failures use the shared error envelope without exposing database deta
   assert.equal(body.success, false);
   assert.equal(body.errorCode, "ERR_INTERNAL");
   assert.ok(!JSON.stringify(body).includes("Private database details"));
+});
+
+async function update(body: unknown, authenticated = true, botId = "owned-bot") {
+  return fetch(`${baseUrl}/bots/${botId}`, {
+    method: "PUT", headers: { "Content-Type": "application/json", ...(authenticated ? { Authorization: `Bearer ${token()}` } : {}) },
+    body: JSON.stringify(body),
+  });
+}
+
+test("updating bots authenticates before validating or saving", async () => {
+  const previous = saves;
+  assert.equal((await update({}, false)).status, 401);
+  assert.equal(saves, previous);
+});
+
+test("updating bots requires all editable fields and rejects invalid input", async () => {
+  const previous = saves;
+  assert.equal((await update({ name: "Ada", job: "Tutor" })).status, 400);
+  assert.equal((await update({ name: " ", job: "Tutor", avatar: "face", instructions: "" })).status, 400);
+  assert.equal(saves, previous);
+});
+
+test("updating bots trims values and strips server-controlled fields", async () => {
+  const response = await update({ name: " Updated ", job: " Tutor ", avatar: " face ", instructions: "", id: "attacker", userId: "attacker", sandboxId: "attacker" });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const { data } = await response.json();
+  assert.equal(data.id, "owned-bot");
+  assert.equal(data.userId, "user_taskmate_test");
+  assert.equal(data.name, "Updated");
+  assert.equal(data.avatar, "face");
+  assert.equal(data.instructions, null);
+  assert.equal(data.sandboxId, null);
+});
+
+test("updating an unavailable bot returns not found", async () => {
+  const response = await update({ name: "Ada", job: "Tutor", avatar: "face", instructions: "" }, true, "missing");
+  assert.equal(response.status, 404);
+});
+
+test("deleting bots requires authentication before any delete", async () => {
+  const previous = saves;
+  const response = await fetch(`${baseUrl}/bots/owned-bot`, { method: "DELETE" });
+  assert.equal(response.status, 401);
+  assert.equal(saves, previous);
+});
+
+test("deleting bots uses the session owner and returns deleted chat IDs", async () => {
+  const response = await fetch(`${baseUrl}/bots/owned-bot?userId=attacker`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}`, "x-user-id": "attacker" } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual((await response.json()).data, { id: "owned-bot", deletedChatIds: ["owned-chat"] });
+});
+
+test("deleting an unavailable bot returns not found", async () => {
+  const response = await fetch(`${baseUrl}/bots/missing`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}` } });
+  assert.equal(response.status, 404);
 });

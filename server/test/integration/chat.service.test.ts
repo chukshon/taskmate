@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 import { db, pool } from "@/db";
 import { bots, chatMembers, chats } from "@/db/schema";
 import { createBot } from "@/services/bot.service";
-import { getChats } from "@/services/chat.service";
+import { getChat, getChats } from "@/services/chat.service";
 
 const owner = `user_chat_test_${nanoid()}`;
 const otherOwner = `user_other_chat_test_${nanoid()}`;
@@ -43,4 +43,14 @@ test("empty chats and foreign-owner memberships do not expose other users' bots"
   await db.insert(chatMembers).values({ chatId: chat.id, botId: foreignBot.id });
   await db.insert(chats).values({ userId: owner });
   assert.deepEqual(await getChats(owner), []);
+});
+
+test("chat detail returns an owned chat and hides it from another user", async () => {
+  const bot = await createBot(owner, input);
+  const [chat] = await getChats(owner);
+  const result = await getChat(owner, chat.id);
+  assert.equal(result.id, chat.id);
+  assert.deepEqual(result.bots, [{ id: bot.id, name: bot.name, avatar: bot.avatar, job: bot.job, instructions: bot.instructions }]);
+  await assert.rejects(getChat(otherOwner, chat.id), { statusCode: 404 });
+  await assert.rejects(getChat(owner, nanoid()), { statusCode: 404 });
 });
