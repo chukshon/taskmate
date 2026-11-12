@@ -21,6 +21,11 @@ const envSchema = z.object({
   XAI_API_KEY: optionalAPIKey,
   ANTHROPIC_API_KEY: optionalAPIKey,
   TRIGGER_SECRET_KEY: optionalAPIKey,
+  DAYTONA_API_KEY: optionalAPIKey,
+  DAYTONA_API_URL: z.preprocess(
+    (value) => typeof value === "string" && !value.trim() ? undefined : value,
+    z.url().default("https://app.daytona.io/api"),
+  ),
 });
 
 const result = envSchema.safeParse({
