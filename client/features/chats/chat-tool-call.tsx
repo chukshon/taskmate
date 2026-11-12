@@ -29,6 +29,7 @@ const toolTitles: Partial<Record<ToolPart["type"], string>> = {
   "tool-keyboardPress": "Press key",
   "tool-viewScreen": "Look at screen",
   "tool-showScreen": "Show screen",
+  "tool-handoff": "Hand off",
 }
 
 function isShowScreenOutput(
@@ -118,6 +119,21 @@ export function ChatToolCall({ part }: { part: ToolPart }) {
         className="border"
         mediaType={part.output.mediaType}
       />
+    )
+  }
+
+  // The teammate's reply follows right below, so one line is enough
+  if (
+    part.type === "tool-handoff" &&
+    part.state === "output-available" &&
+    part.output &&
+    typeof part.output === "object" &&
+    "name" in part.output
+  ) {
+    return (
+      <p className="text-muted-foreground">
+        Handed off to {String((part.output as { name: string }).name)}
+      </p>
     )
   }
 

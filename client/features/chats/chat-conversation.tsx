@@ -52,6 +52,43 @@ type ChatBot = {
   avatar: string
 }
 
+// A reply is one message even when a handoff changes who is writing it, so it
+// is cut at each handoff and every stretch gets its own author. Only a group
+// chat passes bots with a selected bot, so only its replies get a face.
+function splitByAuthor(message: ChatUIMessage, bots: ChatBot[]) {
+  const findBot = (botId?: string) => bots.find((bot) => bot.id === botId)
+
+  let section = {
+    author:
+      message.role === "assistant"
+        ? findBot(message.metadata?.botId)
+        : undefined,
+    parts: [] as ChatUIMessage["parts"],
+  }
+  const sections = [section]
+
+  for (const part of message.parts) {
+    section.parts.push(part)
+
+    if (
+      part.type === "tool-handoff" &&
+      "state" in part &&
+      part.state === "output-available" &&
+      part.output &&
+      typeof part.output === "object" &&
+      "botId" in part.output
+    ) {
+      section = {
+        author: findBot(String((part.output as { botId: string }).botId)),
+        parts: [],
+      }
+      sections.push(section)
+    }
+  }
+
+  return sections
+}
+
 export function ChatConversation({
   chatId,
   kind,
@@ -190,30 +227,52 @@ function ChatMessages({
               description="Send a message to start the conversation."
             />
           )}
-          {messages.map((message) => (
-            <Message key={message.id} from={message.role}>
-              <span className="sr-only">
-                {message.role === "user" ? "You" : replyName}
-              </span>
-              <MessageContent>
-                {message.parts.map((part, index) => {
-                  if (part.type === "text") {
-                    return (
-                      <MessageResponse key={`${message.id}-${index}`}>
-                        {part.text}
-                      </MessageResponse>
-                    )
-                  }
-                  if (isChatToolPart(part)) {
-                    return (
-                      <ChatToolCall key={part.toolCallId} part={part} />
-                    )
-                  }
-                  return null
-                })}
-              </MessageContent>
-            </Message>
-          ))}
+          {messages.flatMap((message) => {
+            const sections = selectedBot
+              ? splitByAuthor(message, bots)
+              : [
+                  {
+                    author: undefined,
+                    parts: message.parts,
+                  },
+                ]
+
+            return sections.map(({ author, parts }, sectionIndex) => (
+              <Message
+                key={`${message.id}-${sectionIndex}`}
+                from={message.role}
+                className={author ? "flex-row items-start" : undefined}
+              >
+                {author && (
+                  <ChatAvatar seed={author.avatar} className="size-6" />
+                )}
+                <span className="sr-only">
+                  {message.role === "user"
+                    ? "You"
+                    : (author?.name ?? replyName)}
+                </span>
+                <MessageContent>
+                  {parts.map((part, index) => {
+                    if (part.type === "text") {
+                      return (
+                        <MessageResponse
+                          key={`${message.id}-${sectionIndex}-${index}`}
+                        >
+                          {part.text}
+                        </MessageResponse>
+                      )
+                    }
+                    if (isChatToolPart(part)) {
+                      return (
+                        <ChatToolCall key={part.toolCallId} part={part} />
+                      )
+                    }
+                    return null
+                  })}
+                </MessageContent>
+              </Message>
+            ))
+          })}
           {status === "submitted" && (
             <div role="status" aria-label={`${replyName} is thinking`}>
               <Spinner />
