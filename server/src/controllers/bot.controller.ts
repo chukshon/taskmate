@@ -14,17 +14,32 @@ export const updateBotRequest = {
 };
 export const deleteBotRequest = { params: updateBotRequest.params };
 
-type DeleteBotHandler = RequestHandler<Request["params"], unknown, unknown, Request["query"], SessionLocals & ValidatedLocals<typeof deleteBotRequest>>;
+type DeleteBotHandler = RequestHandler<
+  Request["params"],
+  unknown,
+  unknown,
+  Request["query"],
+  SessionLocals & ValidatedLocals<typeof deleteBotRequest>
+>;
 
 export function deleteBotHandler(removeBot = deleteBot): DeleteBotHandler {
   return async (_req, res) => {
-    const result = await removeBot(res.locals.session.userId, res.locals.validated.params.botId);
+    const result = await removeBot(
+      res.locals.session.userId,
+      res.locals.validated.params.botId,
+    );
     res.setHeader("Cache-Control", "no-store");
     res.json(getSuccessResponse(result, "Bot deleted."));
   };
 }
 
-type UpdateBotHandler = RequestHandler<Request["params"], unknown, unknown, Request["query"], SessionLocals & ValidatedLocals<typeof updateBotRequest>>;
+type UpdateBotHandler = RequestHandler<
+  Request["params"],
+  unknown,
+  unknown,
+  Request["query"],
+  SessionLocals & ValidatedLocals<typeof updateBotRequest>
+>;
 
 export function updateBotHandler(saveBot = updateBot): UpdateBotHandler {
   return async (_req, res) => {
@@ -36,14 +51,22 @@ export function updateBotHandler(saveBot = updateBot): UpdateBotHandler {
 }
 
 type BotHandler = RequestHandler<
-  Request["params"], unknown, unknown, Request["query"],
+  Request["params"],
+  unknown,
+  unknown,
+  Request["query"],
   SessionLocals & ValidatedLocals<typeof createBotRequest>
 >;
 
 export function createBotHandler(saveBot = createBot): BotHandler {
   return async (_req, res) => {
-    const bot = await saveBot(res.locals.session.userId, res.locals.validated.body);
+    const bot = await saveBot(
+      res.locals.session.userId,
+      res.locals.validated.body,
+    );
     res.setHeader("Cache-Control", "no-store");
-    res.status(HTTP_STATUS.CREATED).json(getSuccessResponse(bot, "Bot created."));
+    res
+      .status(HTTP_STATUS.CREATED)
+      .json(getSuccessResponse(bot, "Bot created."));
   };
 }
