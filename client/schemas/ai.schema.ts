@@ -21,4 +21,5 @@ export type ChatModelCatalog = z.infer<typeof chatModelCatalogSchema>
 export type ChatModelSelection = {
   provider: ChatModelCatalog["defaultProvider"]
   model: string
+  botId?: string
 }
