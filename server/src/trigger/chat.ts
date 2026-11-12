@@ -7,6 +7,10 @@ import { db } from "@/db";
 import { chatMembers, chats, type Bot, type Chat } from "@/db/schema";
 import { createChatModel } from "@/services/ai-model.service";
 import {
+  createHandoffTool,
+  type Handoff,
+} from "@/services/handoff-tool";
+import {
   createSandboxTools,
   type ChatUIMessage,
 } from "@/services/sandbox-tools";
@@ -60,8 +64,9 @@ function buildGroupInstructions(
     .join("\n");
 
   return [
-    `You are in a group chat${chat.name ? ` called "${chat.name}"` : ""}, together with the person and these other teammates:\n\n${teammates}`,
-    "The person addresses each message to one teammate, and this one is yours. Earlier replies in this conversation may have been written by other teammates rather than by you. Use them as context, and do not present their work as your own.",
+    `You are in a group chat${chat.name ? ` called "${chat.name}"` : ""}, together with the person and these other teammates. Each of them has a job and a sandbox of their own:\n\n${teammates}`,
+    "The person addresses each message to one teammate, and this one is yours: either they picked you, or a teammate handed it to you. Earlier replies in this conversation may have been written by other teammates rather than by you. Use them as context, and do not present their work as your own.",
+    "Besides your sandbox tools you have a handoff tool. Call it when a request clearly belongs to a teammate's job rather than yours, with their id and a short note on what is needed. That teammate then takes over and answers in your place, so write nothing more once you have called it. Do not hand off what you can do well yourself, or because a request is merely hard, and never pass a request back to a teammate who handed it to you. When nobody fits better, answer it yourself.",
   ];
 }
 
@@ -97,14 +102,44 @@ export const chatAgent = chat
       onError: (error) => toSafeChatErrorMessage(error),
     },
     // Declared here so screenshots stay images when earlier turns are replayed.
-    tools: async ({ chatId, clientData }) =>
-      createSandboxTools(async () => {
-        const { bot } = await getChatBots(chatId, clientData?.botId);
-        if (!bot.sandboxId) {
+    tools: async ({ chatId, clientData }) => {
+      const {
+        chat: { kind },
+        bots,
+        bot,
+      } = await getChatBots(chatId, clientData?.botId);
+
+      // Whoever holds the turn; a handoff moves it, and the sandbox tools with it
+      let current = bot;
+      const held = new Set([bot.id]);
+
+      const sandboxTools = createSandboxTools(async () => {
+        if (!current.sandboxId) {
           throw new Error("This bot has no sandbox.");
         }
-        return bot.sandboxId;
-      }),
+        return current.sandboxId;
+      });
+
+      if (kind !== "group") return sandboxTools;
+
+      return {
+        ...sandboxTools,
+        ...createHandoffTool((botId) => {
+          const target = bots.find((member) => member.id === botId);
+          if (!target) throw new Error("No teammate in this chat has that id.");
+          // Keeps a request from bouncing between bots
+          if (held.has(target.id)) {
+            throw new Error(
+              `${target.name} already had this request. Answer it yourself.`,
+            );
+          }
+
+          current = target;
+          held.add(target.id);
+          return { botId: target.id, name: target.name };
+        }),
+      };
+    },
     run: async ({
       chatId,
       clientData,
@@ -126,11 +161,32 @@ export const chatAgent = chat
           ? { chat: currentChat, bots }
           : undefined;
 
+      // Stamped on the reply and kept in the transcript with it
+      chat.setUIMessageStreamOptions({
+        messageMetadata: () => ({ botId: bot.id }),
+      });
+
       return streamText({
         model: createChatModel(selection),
         system: buildInstructions(bot, group),
         messages,
         tools,
+        // After a handoff the rest of the turn is the other bot's to answer
+        prepareStep: ({ steps }) => {
+          const results = steps.flatMap((step) => step.toolResults);
+          const handoff = [...results]
+            .reverse()
+            .find((result) => result.toolName === "handoff");
+          const current =
+            handoff &&
+            bots.find(
+              (member) => member.id === (handoff.output as Handoff).botId,
+            );
+
+          return current
+            ? { instructions: buildInstructions(current, group) }
+            : undefined;
+        },
         stopWhen: isStepCount(50),
         abortSignal: signal,
         maxOutputTokens: 4096,
