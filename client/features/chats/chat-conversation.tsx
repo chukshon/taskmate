@@ -22,6 +22,10 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ChatModelSelector } from "@/features/chats/chat-model-selector"
+import type { ChatModelSelection } from "@/schemas/ai.schema"
+import { useChatModelsQuery } from "@/services/chats/queries"
 import { useApiAuth } from "@/hooks/use-api-auth"
 import { createChatTransport } from "@/services/chats/transport"
 
@@ -38,6 +42,20 @@ export function ChatConversation({
     [chatId, getAccessToken]
   )
   const [input, setInput] = useState("")
+  const {
+    data: catalog,
+    error: catalogError,
+    refetch: reloadCatalog,
+  } = useChatModelsQuery()
+  const [selection, setSelection] = useState<ChatModelSelection | null>(null)
+  const activeSelection = selection ?? {
+    provider: catalog?.defaultProvider ?? "google",
+    model: "auto",
+  }
+  const provider = catalog?.providers.find(
+    ({ id }) => id === activeSelection.provider
+  )
+  const canSend = Boolean(provider?.available)
   const submittedInput = useRef("")
   const { messages, sendMessage, status, error, regenerate, stop } = useChat({
     id: chatId,
@@ -89,10 +107,10 @@ export function ChatConversation({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={busy}
+                disabled={busy || !canSend}
                 onClick={() => {
                   setInput("")
-                  void regenerate()
+                  void regenerate({ body: activeSelection })
                 }}
               >
                 Retry
@@ -100,13 +118,34 @@ export function ChatConversation({
             </AlertDescription>
           </Alert>
         )}
+        {catalogError && (
+          <Alert variant="destructive">
+            <AlertDescription className="flex items-center justify-between gap-2">
+              Could not load AI providers.
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void reloadCatalog()}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        {catalog && !canSend && (
+          <p role="status" className="text-sm text-muted-foreground">
+            {provider?.name ?? "This provider"} is not configured. Select an
+            available provider or add its server API key.
+          </p>
+        )}
         <PromptInput
           onSubmit={async ({ text }) => {
-            if (busy || !text.trim()) return
+            if (busy || !canSend || !text.trim()) return
             const submitted = text.trim()
             submittedInput.current = submitted
             setInput("")
-            await sendMessage({ text: submitted })
+            await sendMessage({ text: submitted }, { body: activeSelection })
           }}
         >
           <PromptInputTextarea
@@ -114,15 +153,28 @@ export function ChatConversation({
             placeholder={`Message ${botName}…`}
             value={input}
             onChange={(event) => setInput(event.currentTarget.value)}
-            disabled={busy}
+            disabled={busy || !canSend}
             maxLength={8000}
           />
           <PromptInputFooter>
+            {catalog ? (
+              <ChatModelSelector
+                catalog={catalog}
+                selection={activeSelection}
+                disabled={busy}
+                onChange={setSelection}
+              />
+            ) : (
+              <Skeleton
+                aria-label="Loading AI providers"
+                className="h-7 w-40"
+              />
+            )}
             <PromptInputSubmit
               className="ml-auto"
               status={status}
               onStop={() => void stop()}
-              disabled={!busy && !input.trim()}
+              disabled={!busy && (!canSend || !input.trim())}
             />
           </PromptInputFooter>
         </PromptInput>
