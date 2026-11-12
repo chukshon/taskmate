@@ -6,6 +6,7 @@ const clientDataSchema = z
   .object({
     provider: z.enum(aiProviderIds).default(defaultAIProvider),
     model: z.string().min(1).max(128).default("auto"),
+    botId: z.string().trim().min(1).max(128).optional(),
   })
   .optional();
 

@@ -6,6 +6,7 @@ import { PlusIcon, UsersIcon } from "lucide-react"
 
 import { BotDialog } from "@/components/dialog/bot-dialog"
 import { ChatSearchDialog } from "@/components/dialog/chat-search-dialog"
+import { GroupChatDialog } from "@/components/dialog/group-chat-dialog"
 import { Button } from "@/components/ui/button"
 import { ChatSearchButton, SidebarChats } from "@/features/chats"
 import {
@@ -28,6 +29,7 @@ import {
 
 export function AppSidebar() {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
   return (
@@ -54,7 +56,7 @@ export function AppSidebar() {
                     <PlusIcon />
                     Create new bot
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setGroupDialogOpen(true)}>
                     <UsersIcon />
                     Create group chat
                   </DropdownMenuItem>
@@ -98,6 +100,10 @@ export function AppSidebar() {
         <SidebarRail />
       </Sidebar>
       <BotDialog open={botDialogOpen} onOpenChange={setBotDialogOpen} />
+      <GroupChatDialog
+        open={groupDialogOpen}
+        onOpenChange={setGroupDialogOpen}
+      />
       <ChatSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   )

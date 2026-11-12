@@ -1,7 +1,12 @@
 import type { Sandbox } from "@daytona/sdk";
 import { tool, type InferUITools, type UIDataTypes, type UIMessage } from "ai";
 import { z } from "zod";
-import { getBotSandbox } from "@/services/daytona.service";
+import {
+  getBotSandbox,
+  MEMORY_FILE,
+  readBotMemory,
+} from "@/services/daytona.service";
+import type { HandoffTools } from "@/services/handoff-tool";
 
 const MAX_TEXT_LENGTH = 20_000;
 
@@ -176,6 +181,43 @@ export function createSandboxTools(
       },
     }),
 
+    recall: tool({
+      description:
+        "Read your MEMORY.md notes from every conversation with this person. You MUST call this before answering any question about them, their pets, preferences, projects, earlier decisions, or anything they told you before — including in another chat. Never say you do not know, and never ask them to repeat themselves, until recall has run in this turn. Do not use bash or file tools to read memory; use this tool.",
+      inputSchema: z.object({
+        reason: z
+          .string()
+          .describe("Why you need your memory for this answer"),
+      }),
+      execute: async () => {
+        const sandbox = await getSandbox();
+        return { memory: truncate(await readBotMemory(sandbox)) };
+      },
+    }),
+
+    remember: tool({
+      description:
+        "Append a note to MEMORY.md so you still know it in other chats (including group chats). You MUST call this in the same turn whenever they tell you a lasting fact about themselves — name, pet, preference, project, decision, standing instruction — or ask you to remember something. Saying you noted it, will remember it, or writing it only in your reply does nothing unless you call this. Do not use bash or file tools to write memory; use this tool.",
+      inputSchema: z.object({
+        note: z
+          .string()
+          .describe(
+            "What to remember, as one self-contained sentence that makes sense without this conversation",
+          ),
+      }),
+      execute: async ({ note }) => {
+        const sandbox = await getSandbox();
+        const line = Buffer.from(`- ${note.trim()}\n`, "utf8");
+        // Encoded so no note can break out of the command, and appended so
+        // notes saved from two chats at once both survive
+        const response = await sandbox.process.executeCommand(
+          `echo ${line.toString("base64")} | base64 -d >> ${MEMORY_FILE}`,
+        );
+        if (response.exitCode !== 0) throw new Error(response.result);
+        return { remembered: note.trim() };
+      },
+    }),
+
     mouseClick: tool({
       description:
         "Click the mouse at a point on your sandbox's desktop. Look at the screen first to find the coordinates.",
@@ -273,8 +315,10 @@ export function createSandboxTools(
 }
 
 export type SandboxTools = ReturnType<typeof createSandboxTools>;
+// A reply carries the bot that wrote it so group chats can show who answered.
+export type ChatMessageMetadata = { botId?: string };
 export type ChatUIMessage = UIMessage<
-  never,
+  ChatMessageMetadata,
   UIDataTypes,
-  InferUITools<SandboxTools>
+  InferUITools<SandboxTools & HandoffTools>
 >;

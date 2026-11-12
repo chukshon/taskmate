@@ -1,8 +1,12 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/db";
-import { chatMembers, chats } from "@/db/schema";
+import type { GroupChatInsert } from "@/db/group-chat-schema";
+import { bots, chatMembers, chats } from "@/db/schema";
 import { getBotDesktopUrl } from "@/services/daytona.service";
-import { NotFoundException } from "@/utils/app-error";
+import {
+  InternalServerException,
+  NotFoundException,
+} from "@/utils/app-error";
 
 export async function getChat(userId: string, chatId: string) {
   const row = await db.query.chats.findFirst({
@@ -79,4 +83,92 @@ export async function getChatDesktopUrl(userId: string, chatId: string) {
   const sandboxId = chat.bots[0]?.sandboxId;
   if (!sandboxId) throw new NotFoundException("This bot has no sandbox.");
   return getBotDesktopUrl(sandboxId);
+}
+
+export async function createGroupChat(userId: string, values: GroupChatInsert) {
+  const botIds = [...new Set(values.botIds)];
+  const owned = await db
+    .select({ id: bots.id })
+    .from(bots)
+    .where(and(eq(bots.userId, userId), inArray(bots.id, botIds)));
+  if (botIds.length < 2 || owned.length !== botIds.length) {
+    throw new NotFoundException("Bot not found.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [chat] = await tx
+      .insert(chats)
+      .values({ userId, kind: "group", name: values.name })
+      .returning();
+    if (!chat) throw new InternalServerException("Could not create the group chat.");
+
+    await tx
+      .insert(chatMembers)
+      .values(botIds.map((botId) => ({ chatId: chat.id, botId })));
+
+    return chat;
+  });
+}
+
+export async function updateGroupChat(
+  userId: string,
+  chatId: string,
+  values: GroupChatInsert,
+) {
+  const botIds = [...new Set(values.botIds)];
+  const owned = await db
+    .select({ id: bots.id })
+    .from(bots)
+    .where(and(eq(bots.userId, userId), inArray(bots.id, botIds)));
+  if (botIds.length < 2 || owned.length !== botIds.length) {
+    throw new NotFoundException("Bot not found.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [chat] = await tx
+      .update(chats)
+      .set({ name: values.name })
+      .where(
+        and(
+          eq(chats.id, chatId),
+          eq(chats.userId, userId),
+          eq(chats.kind, "group"),
+        ),
+      )
+      .returning();
+    if (!chat) throw new NotFoundException("Chat not found.");
+
+    await tx
+      .delete(chatMembers)
+      .where(
+        and(
+          eq(chatMembers.chatId, chatId),
+          notInArray(chatMembers.botId, botIds),
+        ),
+      );
+
+    // Bots that stay keep the row they joined with, and so their place
+    await tx
+      .insert(chatMembers)
+      .values(botIds.map((botId) => ({ chatId, botId })))
+      .onConflictDoNothing();
+
+    return chat;
+  });
+}
+
+export async function deleteGroupChat(userId: string, chatId: string) {
+  // Memberships go with the chat; the bots stay
+  const [chat] = await db
+    .delete(chats)
+    .where(
+      and(
+        eq(chats.id, chatId),
+        eq(chats.userId, userId),
+        eq(chats.kind, "group"),
+      ),
+    )
+    .returning({ id: chats.id, name: chats.name });
+  if (!chat) throw new NotFoundException("Chat not found.");
+  return chat;
 }

@@ -6,7 +6,8 @@ import { getApiData } from "@/lib/api-response"
 import type { ChatModelSelection } from "@/schemas/ai.schema"
 import type { ApiResponse } from "@/types/api-response"
 
-export type ChatUIMessage = UIMessage
+export type ChatMessageMetadata = { botId?: string }
+export type ChatUIMessage = UIMessage<ChatMessageMetadata>
 
 async function authorizedJson<T>(
   path: string,

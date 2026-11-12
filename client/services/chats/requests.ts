@@ -6,6 +6,7 @@ import {
   chatDetailSchema,
   chatListSchema,
 } from "@/schemas/chat.schema"
+import type { GroupChatInsert } from "@/schemas/group-chat.schema"
 import type { ChatSummary, ChatDetail } from "@/services/chats/types"
 import type { ApiResponse } from "@/types/api-response"
 import {
@@ -78,4 +79,53 @@ export async function getChatDesktopUrl(
   if (!result.success)
     throw new ApiError("The API returned an unexpected desktop URL.")
   return result.data.url
+}
+
+export async function createGroupChat(
+  values: GroupChatInsert,
+  token: string
+): Promise<{ id: string; name: string | null }> {
+  const response = await api.post<
+    ApiResponse<{ id: string; name: string | null }>
+  >("/chats", values, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const chat = getApiData(response.data)
+  if (typeof chat?.id !== "string") {
+    throw new ApiError("The API returned an unexpected group chat.")
+  }
+  return chat
+}
+
+export async function updateGroupChat(
+  chatId: string,
+  values: GroupChatInsert,
+  token: string
+): Promise<{ id: string; name: string | null }> {
+  const response = await api.put<
+    ApiResponse<{ id: string; name: string | null }>
+  >(`/chats/${encodeURIComponent(chatId)}`, values, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const chat = getApiData(response.data)
+  if (typeof chat?.id !== "string") {
+    throw new ApiError("The API returned an unexpected group chat.")
+  }
+  return chat
+}
+
+export async function deleteGroupChat(
+  chatId: string,
+  token: string
+): Promise<{ id: string; name: string | null }> {
+  const response = await api.delete<
+    ApiResponse<{ id: string; name: string | null }>
+  >(`/chats/${encodeURIComponent(chatId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const chat = getApiData(response.data)
+  if (typeof chat?.id !== "string") {
+    throw new ApiError("The API returned an unexpected delete response.")
+  }
+  return chat
 }

@@ -18,10 +18,18 @@ import {
 import {
   PromptInput,
   PromptInputFooter,
+  PromptInputSelect,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectTrigger,
+  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
+  PromptInputTools,
 } from "@/components/ai-elements/prompt-input"
+import { ChatAvatar } from "@/components/chat-avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,12 +47,59 @@ import {
   type ChatUIMessage,
 } from "@/services/chats/transport"
 
+type ChatBot = {
+  id: string
+  name: string
+  avatar: string
+}
+
+// A reply is one message even when a handoff changes who is writing it, so it
+// is cut at each handoff and every stretch gets its own author. Only a group
+// chat passes bots with a selected bot, so only its replies get a face.
+function splitByAuthor(message: ChatUIMessage, bots: ChatBot[]) {
+  const findBot = (botId?: string) => bots.find((bot) => bot.id === botId)
+
+  let section = {
+    author:
+      message.role === "assistant"
+        ? findBot(message.metadata?.botId)
+        : undefined,
+    parts: [] as ChatUIMessage["parts"],
+  }
+  const sections = [section]
+
+  for (const part of message.parts) {
+    section.parts.push(part)
+
+    if (
+      part.type === "tool-handoff" &&
+      "state" in part &&
+      part.state === "output-available" &&
+      part.output &&
+      typeof part.output === "object" &&
+      "botId" in part.output
+    ) {
+      section = {
+        author: findBot(String((part.output as { botId: string }).botId)),
+        parts: [],
+      }
+      sections.push(section)
+    }
+  }
+
+  return sections
+}
+
 export function ChatConversation({
   chatId,
-  botName,
+  kind,
+  bots,
+  title,
 }: {
   chatId: string
-  botName: string
+  kind: "direct" | "group"
+  bots: ChatBot[]
+  title: string
 }) {
   const { getAccessToken } = useApiAuth()
   const {
@@ -53,9 +108,15 @@ export function ChatConversation({
     refetch: reloadCatalog,
   } = useChatModelsQuery()
   const [selection, setSelection] = useState<ChatModelSelection | null>(null)
-  const activeSelection = selection ?? {
-    provider: catalog?.defaultProvider ?? "google",
-    model: "auto",
+  const [botId, setBotId] = useState(bots[0]?.id)
+  const selectedBot =
+    kind === "group"
+      ? (bots.find((bot) => bot.id === botId) ?? bots[0])
+      : undefined
+  const activeSelection: ChatModelSelection = {
+    provider: selection?.provider ?? catalog?.defaultProvider ?? "google",
+    model: selection?.model ?? "auto",
+    ...(selectedBot ? { botId: selectedBot.id } : {}),
   }
   const transport = useChatTransport({
     getAccessToken,
@@ -95,12 +156,20 @@ export function ChatConversation({
     <ChatMessages
       key={chatId}
       chatId={chatId}
-      botName={botName}
+      title={title}
+      bots={bots}
+      selectedBot={selectedBot}
+      onBotChange={setBotId}
       catalog={catalog}
       catalogError={catalogError}
       reloadCatalog={reloadCatalog}
       selection={activeSelection}
-      onSelectionChange={setSelection}
+      onSelectionChange={(next) =>
+        setSelection({
+          provider: next.provider,
+          model: next.model,
+        })
+      }
       initialMessages={messages}
       transport={transport}
     />
@@ -109,7 +178,10 @@ export function ChatConversation({
 
 function ChatMessages({
   chatId,
-  botName,
+  title,
+  bots,
+  selectedBot,
+  onBotChange,
   catalog,
   catalogError,
   reloadCatalog,
@@ -119,7 +191,10 @@ function ChatMessages({
   transport,
 }: {
   chatId: string
-  botName: string
+  title: string
+  bots: ChatBot[]
+  selectedBot?: ChatBot
+  onBotChange: (botId: string) => void
   catalog: ReturnType<typeof useChatModelsQuery>["data"]
   catalogError: ReturnType<typeof useChatModelsQuery>["error"]
   reloadCatalog: ReturnType<typeof useChatModelsQuery>["refetch"]
@@ -132,6 +207,7 @@ function ChatMessages({
   const submittedInput = useRef("")
   const provider = catalog?.providers.find(({ id }) => id === selection.provider)
   const canSend = Boolean(provider?.available)
+  const replyName = selectedBot?.name ?? title
   const { messages, sendMessage, status, error, regenerate, stop } =
     useChat<ChatUIMessage>({
       id: chatId,
@@ -148,36 +224,88 @@ function ChatMessages({
         <ConversationContent className="mx-auto w-full max-w-3xl">
           {messages.length === 0 && (
             <ConversationEmptyState
-              title={`Chat with ${botName}`}
+              title={`Chat with ${title}`}
               description="Send a message to start the conversation."
             />
           )}
-          {messages.map((message) => (
-            <Message key={message.id} from={message.role}>
-              <span className="sr-only">
-                {message.role === "user" ? "You" : botName}
-              </span>
-              <MessageContent>
-                {message.parts.map((part, index) => {
-                  if (part.type === "text") {
-                    return (
-                      <MessageResponse key={`${message.id}-${index}`}>
-                        {part.text}
-                      </MessageResponse>
-                    )
-                  }
-                  if (isChatToolPart(part)) {
-                    return (
-                      <ChatToolCall key={part.toolCallId} part={part} />
-                    )
-                  }
-                  return null
-                })}
-              </MessageContent>
-            </Message>
-          ))}
+          {messages.flatMap((message) => {
+            // The bot a group chat's message was sent to
+            const addressee =
+              selectedBot && message.role === "user"
+                ? bots.find((bot) => bot.id === message.metadata?.botId)
+                : undefined
+            const sections = selectedBot
+              ? splitByAuthor(message, bots)
+              : [
+                  {
+                    author: undefined,
+                    parts: message.parts,
+                  },
+                ]
+
+            return sections.map(({ author, parts }, sectionIndex) => {
+              const renderedParts = parts.map((part, index) => {
+                if (part.type === "text") {
+                  return (
+                    <MessageResponse
+                      key={`${message.id}-${sectionIndex}-${index}`}
+                      // Flows the first paragraph inline, right after the tag
+                      className={
+                        addressee && index === 0
+                          ? "inline [&>p:first-child]:inline"
+                          : undefined
+                      }
+                    >
+                      {part.text}
+                    </MessageResponse>
+                  )
+                }
+                if (isChatToolPart(part)) {
+                  return <ChatToolCall key={part.toolCallId} part={part} />
+                }
+                return null
+              })
+
+              return (
+                <Message
+                  key={`${message.id}-${sectionIndex}`}
+                  from={message.role}
+                  className={author ? "flex-row items-start" : undefined}
+                >
+                  {author && (
+                    <ChatAvatar seed={author.avatar} className="size-6" />
+                  )}
+                  <span className="sr-only">
+                    {message.role === "user"
+                      ? "You"
+                      : (author?.name ?? replyName)}
+                  </span>
+                  <MessageContent>
+                    {addressee ? (
+                      // One block, so the tag and the text share a line and the text wraps under it
+                      <div>
+                        <Badge
+                          variant="outline"
+                          className="mr-1.5 max-w-40 pl-1 align-top"
+                        >
+                          <ChatAvatar
+                            seed={addressee.avatar}
+                            className="size-3.5"
+                          />
+                          <span className="truncate">{addressee.name}</span>
+                        </Badge>
+                        {renderedParts}
+                      </div>
+                    ) : (
+                      renderedParts
+                    )}
+                  </MessageContent>
+                </Message>
+              )
+            })
+          })}
           {status === "submitted" && (
-            <div role="status" aria-label={`${botName} is thinking`}>
+            <div role="status" aria-label={`${replyName} is thinking`}>
               <Spinner />
             </div>
           )}
@@ -233,18 +361,60 @@ function ChatMessages({
             const submitted = text.trim()
             submittedInput.current = submitted
             setInput("")
-            await sendMessage({ text: submitted })
+            // Kept on the message so the chat can show who it was for
+            const metadata = selectedBot
+              ? { botId: selectedBot.id }
+              : undefined
+            await sendMessage({ text: submitted, metadata })
           }}
         >
           <PromptInputTextarea
             aria-label="Message"
-            placeholder={`Message ${botName}…`}
+            placeholder={
+              selectedBot
+                ? `Message ${selectedBot.name}…`
+                : `Message ${title}…`
+            }
             value={input}
             onChange={(event) => setInput(event.currentTarget.value)}
             disabled={busy || !canSend}
             maxLength={8000}
           />
-          <PromptInputFooter>
+          <PromptInputFooter
+            className={selectedBot ? undefined : "justify-end"}
+          >
+            {selectedBot && (
+              <PromptInputTools>
+                <PromptInputSelect
+                  items={bots.map((bot) => ({
+                    value: bot.id,
+                    label: bot.name,
+                  }))}
+                  value={selectedBot.id}
+                  onValueChange={(value) => {
+                    if (typeof value === "string") onBotChange(value)
+                  }}
+                >
+                  <PromptInputSelectTrigger aria-label="Bot to talk to">
+                    <PromptInputSelectValue>
+                      <ChatAvatar
+                        seed={selectedBot.avatar}
+                        className="size-5"
+                      />
+                      {selectedBot.name}
+                    </PromptInputSelectValue>
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {bots.map((bot) => (
+                      <PromptInputSelectItem key={bot.id} value={bot.id}>
+                        <ChatAvatar seed={bot.avatar} className="size-5" />
+                        {bot.name}
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect>
+              </PromptInputTools>
+            )}
             {catalog ? (
               <ChatModelSelector
                 catalog={catalog}

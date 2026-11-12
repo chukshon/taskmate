@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { db } from "@/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { bots, chatMembers, chats, type BotInsert } from "@/db/schema";
 import type { BotFormValues } from "@/db/bot-schema";
 import {
@@ -8,6 +8,13 @@ import {
   deleteBotSandbox,
 } from "@/services/daytona.service";
 import { InternalServerException, NotFoundException } from "@/utils/app-error";
+
+export async function getBots(userId: string) {
+  return db.query.bots.findMany({
+    where: eq(bots.userId, userId),
+    orderBy: [desc(bots.createdAt), asc(bots.id)],
+  });
+}
 
 export async function deleteBot(
   userId: string,

@@ -56,7 +56,13 @@ export function ChatFeature({ chatId }: { chatId: string }) {
       <ChatConversation
         key={chatId}
         chatId={chatId}
-        botName={data.bots[0].name}
+        kind={data.kind}
+        bots={data.bots.map(({ id, name, avatar }) => ({
+          id,
+          name,
+          avatar,
+        }))}
+        title={data.name ?? data.bots[0].name}
       />
     </div>
   )
