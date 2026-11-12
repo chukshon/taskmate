@@ -10,7 +10,8 @@ import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 
 const token = configureClerkTestEnvironment();
 const { env } = await import("@/config/env.config");
-const { sendChatMessageHandler, sendChatMessageRequest } = await import("@/controllers/chat-message.controller");
+const { sendChatMessageHandler } = await import("@/controllers/chat-message.controller");
+const { sendChatMessageRequest } = await import("@/validators/chat-message.validator");
 const { requireSession } = await import("@/middlewares/requireSession.middleware");
 const { validateRequest } = await import("@/middlewares/validateRequest.middleware");
 const { errorHandler } = await import("@/middlewares/errorHandler.middleware");

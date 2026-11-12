@@ -1,12 +1,10 @@
+import type { getChatRequest } from "@/validators/chat.validator";
 import type { SessionHandler } from "@/middlewares/requireSession.middleware";
 import { getChat, getChats } from "@/services/chat.service";
 import { getSuccessResponse } from "@/utils/api-response";
-import { z } from "zod";
 import type { Request, RequestHandler } from "express";
 import type { SessionLocals } from "@/middlewares/requireSession.middleware";
 import type { ValidatedLocals } from "@/middlewares/validateRequest.middleware";
-
-export const getChatRequest = { params: z.object({ chatId: z.string().trim().min(1).max(128) }) };
 
 type ChatHandler = RequestHandler<Request["params"], unknown, unknown, Request["query"], SessionLocals & ValidatedLocals<typeof getChatRequest>>;
 
