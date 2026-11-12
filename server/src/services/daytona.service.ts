@@ -21,3 +21,10 @@ export async function deleteBotSandbox(sandboxId: string | null | undefined) {
     throw error;
   }
 }
+
+/** A running sandbox; idle ones stop themselves and are woken here. */
+export async function getBotSandbox(sandboxId: string) {
+  const sandbox = await daytona.get(sandboxId);
+  if (sandbox.state !== "started") await sandbox.start();
+  return sandbox;
+}
