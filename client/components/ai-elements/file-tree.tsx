@@ -166,6 +166,7 @@ export const FileTreeFolder = ({
         <div
           className={cn("", className)}
           role="treeitem"
+          aria-selected={isSelected}
           tabIndex={0}
           {...props}
         >
@@ -258,6 +259,7 @@ export const FileTreeFile = ({
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         role="treeitem"
+          aria-selected={isSelected}
         tabIndex={0}
         {...props}
       >

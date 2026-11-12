@@ -55,29 +55,24 @@ export const useAudioDevices = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
 
-  const loadDevicesWithoutPermission = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const deviceList = await navigator.mediaDevices.enumerateDevices();
-      const audioInputs = deviceList.filter(
-        (device) => device.kind === "audioinput"
-      );
-
-      setDevices(audioInputs);
-    } catch (caughtError) {
-      const message =
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to get audio devices";
-
-      setError(message);
-      console.error("Error getting audio devices:", message);
-    } finally {
-      setLoading(false);
-    }
+  const receiveDevices = useCallback((deviceList: MediaDeviceInfo[]) => {
+    setDevices(deviceList.filter((device) => device.kind === "audioinput"));
+    setError(null);
+    setLoading(false);
   }, []);
+
+  const reportDeviceError = useCallback((caughtError: unknown) => {
+    const message = caughtError instanceof Error ? caughtError.message : "Failed to get audio devices";
+    setError(message);
+    setLoading(false);
+    console.error("Error getting audio devices:", message);
+  }, []);
+
+  const loadDevicesWithoutPermission = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    return navigator.mediaDevices.enumerateDevices().then(receiveDevices, reportDeviceError);
+  }, [receiveDevices, reportDeviceError]);
 
   const loadDevicesWithPermission = useCallback(async () => {
     if (loading) {
@@ -117,8 +112,13 @@ export const useAudioDevices = () => {
   }, [loading]);
 
   useEffect(() => {
-    loadDevicesWithoutPermission();
-  }, [loadDevicesWithoutPermission]);
+    let active = true;
+    navigator.mediaDevices.enumerateDevices().then(
+      (devices) => { if (active) receiveDevices(devices); },
+      (error: unknown) => { if (active) reportDeviceError(error); },
+    );
+    return () => { active = false; };
+  }, [receiveDevices, reportDeviceError]);
 
   useEffect(() => {
     const handleDeviceChange = () => {
