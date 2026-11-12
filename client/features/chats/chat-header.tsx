@@ -2,6 +2,7 @@ import { MonitorIcon } from "lucide-react"
 
 import { ChatAvatar } from "@/components/chat-avatar"
 import { useDesktopPanel } from "@/components/desktop-panel"
+import { GroupChatAvatar } from "@/components/group-chat-avatar"
 import { Button } from "@/components/ui/button"
 import { BotDialog } from "@/components/dialog/bot-dialog"
 import type { ChatDetail } from "@/services/chats/types"
@@ -24,6 +25,18 @@ function DesktopButton() {
 }
 
 export function ChatHeader({ chat }: { chat: ChatDetail }) {
+  const title = chat.name ?? chat.bots[0]?.name ?? "Chat"
+  const seeds = chat.bots.map((bot) => bot.avatar)
+
+  if (chat.kind === "group") {
+    return (
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b px-4">
+        <GroupChatAvatar seeds={seeds} className="size-6" />
+        <span className="truncate text-sm font-semibold">{title}</span>
+      </header>
+    )
+  }
+
   const bot = chat.bots[0]
 
   return (

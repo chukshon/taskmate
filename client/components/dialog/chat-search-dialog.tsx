@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 import { ChatAvatar } from "@/components/chat-avatar"
+import { GroupChatAvatar } from "@/components/group-chat-avatar"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -113,7 +114,14 @@ export function ChatSearchDialog({
                         router.push(`/chats/${encodeURIComponent(chat.id)}`)
                       }}
                     >
-                      <ChatAvatar seed={chat.bots[0].avatar} />
+                      {chat.kind === "group" ? (
+                        <GroupChatAvatar
+                          seeds={chat.bots.map((bot) => bot.avatar)}
+                          className="size-6"
+                        />
+                      ) : (
+                        <ChatAvatar seed={chat.bots[0].avatar} />
+                      )}
                       <span className="truncate">
                         {chat.name ?? chat.bots[0].name}
                       </span>
