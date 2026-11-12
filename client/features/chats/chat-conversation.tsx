@@ -102,7 +102,9 @@ export function ChatConversation({
         {error && (
           <Alert variant="destructive">
             <AlertDescription className="flex items-center justify-between gap-2">
-              Could not get a reply. Please try again.
+              <span>
+                {error.message || "Could not get a reply. Please try again."}
+              </span>
               <Button
                 type="button"
                 variant="outline"

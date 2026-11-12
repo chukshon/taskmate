@@ -3,6 +3,7 @@ import type { UIMessage } from "ai";
 import type { getChat } from "@/services/chat.service";
 import { createChatModel } from "@/services/ai-model.service";
 import type { ChatModelSelection } from "@/services/ai-model.service";
+import { getSafeChatErrorLog } from "@/utils/safe-chat-error";
 import { logger } from "@/utils/logger";
 
 export async function streamChatReply(
@@ -20,6 +21,8 @@ export async function streamChatReply(
     abortSignal,
     maxOutputTokens: 4096,
     ...(selection.provider === "openai" ? { providerOptions: { openai: { store: false } } } : {}),
-    onError: () => { logger.warn("AI chat generation failed"); },
+    onError: ({ error }) => {
+      logger.warn("AI chat generation failed", getSafeChatErrorLog(error));
+    },
   });
 }

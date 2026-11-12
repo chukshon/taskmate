@@ -4,6 +4,7 @@ import type { SessionLocals } from "@/middlewares/requireSession.middleware";
 import type { ValidatedLocals } from "@/middlewares/validateRequest.middleware";
 import { getChat } from "@/services/chat.service";
 import { streamChatReply } from "@/services/chat-message.service";
+import { toSafeChatErrorMessage } from "@/utils/safe-chat-error";
 
 type ChatMessageHandler = RequestHandler<
   Request["params"],
@@ -36,7 +37,7 @@ export function sendChatMessageHandler(
       result.pipeUIMessageStreamToResponse(res, {
         headers: { "Cache-Control": "no-store" },
         sendReasoning: false,
-        onError: () => "Could not generate a reply. Please try again.",
+        onError: (error) => toSafeChatErrorMessage(error),
       });
     } catch (error) {
       res.off("close", onClose);

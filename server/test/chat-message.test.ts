@@ -54,6 +54,25 @@ app.post("/chats/:chatId/messages", requireSession, validateRequest(sendChatMess
       onError: () => {},
     });
   }
+  if (messages[0].parts.some((part) => part.type === "text" && part.text === "Stream auth fail")) {
+    const { APICallError } = await import("ai");
+    return streamText({
+      model: new MockLanguageModelV4({
+        doStream: async () => {
+          throw new APICallError({
+            message: "Incorrect API key provided: sk-live-secret",
+            url: "https://api.openai.com/v1/responses",
+            requestBodyValues: { prompt: "secret prompt" },
+            statusCode: 401,
+            responseBody: '{"error":{"message":"Incorrect API key sk-live-secret"}}',
+          });
+        },
+      }),
+      messages: await convertToModelMessages(messages),
+      maxRetries: 0,
+      onError: () => {},
+    });
+  }
   return streamText({ model, messages: await convertToModelMessages(messages), abortSignal: signal });
 }));
 app.use(errorHandler);
@@ -139,4 +158,12 @@ test("provider errors after streaming starts return a safe error event", async (
   const stream = await response.text();
   assert.match(stream, /Could not generate a reply/);
   assert.ok(!stream.includes("Private streaming provider"));
+});
+
+test("provider auth failures after streaming starts return a mapped safe message", async () => {
+  const response = await send([{ ...message, parts: [{ type: "text", text: "Stream auth fail" }] }]);
+  const stream = await response.text();
+  assert.match(stream, /The AI provider rejected the API key/);
+  assert.ok(!stream.includes("sk-live-secret"));
+  assert.ok(!stream.includes("secret prompt"));
 });
