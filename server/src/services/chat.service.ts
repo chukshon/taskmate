@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/db";
 import type { GroupChatInsert } from "@/db/group-chat-schema";
 import { bots, chatMembers, chats } from "@/db/schema";
@@ -108,4 +108,67 @@ export async function createGroupChat(userId: string, values: GroupChatInsert) {
 
     return chat;
   });
+}
+
+export async function updateGroupChat(
+  userId: string,
+  chatId: string,
+  values: GroupChatInsert,
+) {
+  const botIds = [...new Set(values.botIds)];
+  const owned = await db
+    .select({ id: bots.id })
+    .from(bots)
+    .where(and(eq(bots.userId, userId), inArray(bots.id, botIds)));
+  if (botIds.length < 2 || owned.length !== botIds.length) {
+    throw new NotFoundException("Bot not found.");
+  }
+
+  return db.transaction(async (tx) => {
+    const [chat] = await tx
+      .update(chats)
+      .set({ name: values.name })
+      .where(
+        and(
+          eq(chats.id, chatId),
+          eq(chats.userId, userId),
+          eq(chats.kind, "group"),
+        ),
+      )
+      .returning();
+    if (!chat) throw new NotFoundException("Chat not found.");
+
+    await tx
+      .delete(chatMembers)
+      .where(
+        and(
+          eq(chatMembers.chatId, chatId),
+          notInArray(chatMembers.botId, botIds),
+        ),
+      );
+
+    // Bots that stay keep the row they joined with, and so their place
+    await tx
+      .insert(chatMembers)
+      .values(botIds.map((botId) => ({ chatId, botId })))
+      .onConflictDoNothing();
+
+    return chat;
+  });
+}
+
+export async function deleteGroupChat(userId: string, chatId: string) {
+  // Memberships go with the chat; the bots stay
+  const [chat] = await db
+    .delete(chats)
+    .where(
+      and(
+        eq(chats.id, chatId),
+        eq(chats.userId, userId),
+        eq(chats.kind, "group"),
+      ),
+    )
+    .returning({ id: chats.id, name: chats.name });
+  if (!chat) throw new NotFoundException("Chat not found.");
+  return chat;
 }

@@ -7,9 +7,11 @@ import {
 import { Router } from "express";
 import {
   createGroupChatHandler,
+  deleteGroupChatHandler,
   getChatDesktopUrlHandler,
   getChatHandler,
   getChatsHandler,
+  updateGroupChatHandler,
 } from "@/controllers/chat.controller";
 import { requireSession } from "@/middlewares/requireSession.middleware";
 import { validateRequest } from "@/middlewares/validateRequest.middleware";
@@ -19,7 +21,11 @@ import {
   startChatSessionHandler,
 } from "@/controllers/chat-session.controller";
 import { getChatModelsHandler } from "@/controllers/ai-model.controller";
-import { createGroupChatRequest } from "@/validators/group-chat.validator";
+import {
+  createGroupChatRequest,
+  deleteGroupChatRequest,
+  updateGroupChatRequest,
+} from "@/validators/group-chat.validator";
 
 export const chatRoutes = Router();
 chatRoutes.get("/", requireSession, getChatsHandler());
@@ -31,6 +37,18 @@ chatRoutes.post(
 );
 chatRoutes.get("/models", requireSession, getChatModelsHandler);
 chatRoutes.get("/:chatId", requireSession, validateRequest(getChatRequest), getChatHandler());
+chatRoutes.put(
+  "/:chatId",
+  requireSession,
+  validateRequest(updateGroupChatRequest),
+  updateGroupChatHandler(),
+);
+chatRoutes.delete(
+  "/:chatId",
+  requireSession,
+  validateRequest(deleteGroupChatRequest),
+  deleteGroupChatHandler(),
+);
 chatRoutes.get(
   "/:chatId/desktop",
   requireSession,
