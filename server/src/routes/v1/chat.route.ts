@@ -6,6 +6,7 @@ import {
 } from "@/validators/chat-session.validator";
 import { Router } from "express";
 import {
+  createGroupChatHandler,
   getChatDesktopUrlHandler,
   getChatHandler,
   getChatsHandler,
@@ -18,9 +19,16 @@ import {
   startChatSessionHandler,
 } from "@/controllers/chat-session.controller";
 import { getChatModelsHandler } from "@/controllers/ai-model.controller";
+import { createGroupChatRequest } from "@/validators/group-chat.validator";
 
 export const chatRoutes = Router();
 chatRoutes.get("/", requireSession, getChatsHandler());
+chatRoutes.post(
+  "/",
+  requireSession,
+  validateRequest(createGroupChatRequest),
+  createGroupChatHandler(),
+);
 chatRoutes.get("/models", requireSession, getChatModelsHandler);
 chatRoutes.get("/:chatId", requireSession, validateRequest(getChatRequest), getChatHandler());
 chatRoutes.get(

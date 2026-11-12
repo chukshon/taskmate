@@ -1,16 +1,27 @@
 import type { getChatRequest } from "@/validators/chat.validator";
+import type { createGroupChatRequest } from "@/validators/group-chat.validator";
 import type { SessionHandler } from "@/middlewares/requireSession.middleware";
 import {
+  createGroupChat,
   getChat,
   getChatDesktopUrl,
   getChats,
 } from "@/services/chat.service";
 import { getSuccessResponse } from "@/utils/api-response";
+import { HTTP_STATUS } from "@/config/http-status.config";
 import type { Request, RequestHandler } from "express";
 import type { SessionLocals } from "@/middlewares/requireSession.middleware";
 import type { ValidatedLocals } from "@/middlewares/validateRequest.middleware";
 
 type ChatHandler = RequestHandler<Request["params"], unknown, unknown, Request["query"], SessionLocals & ValidatedLocals<typeof getChatRequest>>;
+
+type CreateGroupChatHandler = RequestHandler<
+  Request["params"],
+  unknown,
+  unknown,
+  Request["query"],
+  SessionLocals & ValidatedLocals<typeof createGroupChatRequest>
+>;
 
 export function getChatHandler(findChat = getChat): ChatHandler {
   return async (_req, res) => {
@@ -26,6 +37,21 @@ export function getChatsHandler(listChats = getChats): SessionHandler {
     const chats = await listChats(res.locals.session.userId);
     res.setHeader("Cache-Control", "no-store");
     res.json(getSuccessResponse(chats, "Chats retrieved."));
+  };
+}
+
+export function createGroupChatHandler(
+  saveGroupChat = createGroupChat,
+): CreateGroupChatHandler {
+  return async (_req, res) => {
+    const chat = await saveGroupChat(
+      res.locals.session.userId,
+      res.locals.validated.body,
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res
+      .status(HTTP_STATUS.CREATED)
+      .json(getSuccessResponse(chat, "Group chat created."));
   };
 }
 

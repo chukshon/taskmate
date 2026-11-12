@@ -3,6 +3,11 @@ import { index, pgEnum, pgTable, primaryKey, text, timestamp } from "drizzle-orm
 import { nanoid } from "nanoid";
 import { bots } from "@/db/bot-schema";
 export { bots, botInsertSchema, botFormSchema, type BotInsert } from "@/db/bot-schema";
+export {
+  groupChatInsertSchema,
+  type GroupChatInsert,
+} from "@/db/group-chat-schema";
+
 
 export const chatKind = pgEnum("chat_kind", ["direct", "group"]);
 
