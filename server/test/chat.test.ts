@@ -9,6 +9,7 @@ import { configureClerkTestEnvironment } from "./helpers/clerk.js";
 const token = configureClerkTestEnvironment();
 const { env } = await import("@/config/env.config");
 const { getChatsHandler, getChatHandler } = await import("@/controllers/chat.controller");
+const { getChatModelsHandler } = await import("@/controllers/ai-model.controller");
 const { getChatRequest } = await import("@/validators/chat.validator");
 const { validateRequest } = await import("@/middlewares/validateRequest.middleware");
 const { NotFoundException } = await import("@/utils/app-error");
@@ -26,6 +27,7 @@ app.get("/chats", requireSession, getChatsHandler(async (userId) => {
   calls++;
   return [];
 }));
+app.get("/chats/models", requireSession, getChatModelsHandler);
 app.get("/chats/:chatId", requireSession, validateRequest(getChatRequest), getChatHandler(async (userId, chatId) => {
   requestedOwner = userId;
   calls++;
@@ -46,6 +48,24 @@ test("listing chats requires authentication before querying", async () => {
   const response = await fetch(`${baseUrl}/chats`);
   assert.equal(response.status, 401);
   assert.equal(calls, previous);
+});
+
+test("chat model catalogue requires authentication and returns provider availability", async () => {
+  assert.equal((await fetch(`${baseUrl}/chats/models`)).status, 401);
+  const response = await fetch(`${baseUrl}/chats/models`, {
+    headers: { Authorization: `Bearer ${token()}` },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const body = await response.json();
+  assert.equal(body.success, true);
+  assert.ok(["google", "openai", "xai", "anthropic"].includes(body.data.defaultProvider));
+  assert.equal(body.data.providers.length, 4);
+  for (const provider of body.data.providers) {
+    assert.equal(typeof provider.name, "string");
+    assert.equal(typeof provider.available, "boolean");
+    assert.ok(provider.models.length >= 1);
+  }
 });
 
 test("chat ownership comes from the verified session rather than query parameters", async () => {

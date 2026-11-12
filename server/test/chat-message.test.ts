@@ -18,6 +18,7 @@ const { errorHandler } = await import("@/middlewares/errorHandler.middleware");
 const { NotFoundException } = await import("@/utils/app-error");
 let lookups = 0;
 let generations = 0;
+let lastSelection: { provider: string; model: string } | undefined;
 const model = new MockLanguageModelV4({
   doStream: async () => ({
     stream: simulateReadableStream({ initialDelayInMs: null, chunkDelayInMs: null, chunks: [
@@ -39,8 +40,9 @@ app.post("/chats/:chatId/messages", requireSession, validateRequest(sendChatMess
   assert.equal(userId, "user_taskmate_test");
   if (chatId !== "owned-chat") throw new NotFoundException("Chat not found.");
   return { id: chatId, kind: "direct", name: null, lastMessagePreview: null, lastMessageAt: new Date(), createdAt: new Date(), bots: [{ id: "bot-1", name: "Ada", avatar: "ada", job: "Tutor", instructions: null }] };
-}, async (_chat, messages, signal) => {
+}, async (_chat, messages, signal, selection) => {
   generations++;
+  lastSelection = selection;
   if (messages[0].parts.some((part) => part.type === "text" && part.text === "Fail")) {
     throw new Error("Private provider credentials and details");
   }
@@ -63,8 +65,18 @@ before(async () => {
 });
 after(() => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
 const message = { id: "message-1", role: "user", parts: [{ type: "text", text: "Hello" }] };
-const send = (messages: unknown, authenticated = true, chatId = "owned-chat") => fetch(`${baseUrl}/chats/${chatId}/messages?userId=attacker`, {
-  method: "POST", headers: { "Content-Type": "application/json", ...(authenticated ? { Authorization: `Bearer ${token()}` } : {}) }, body: JSON.stringify({ messages }),
+const send = (
+  messages: unknown,
+  authenticated = true,
+  chatId = "owned-chat",
+  selection?: { provider?: string; model?: string },
+) => fetch(`${baseUrl}/chats/${chatId}/messages?userId=attacker`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    ...(authenticated ? { Authorization: `Bearer ${token()}` } : {}),
+  },
+  body: JSON.stringify({ messages, ...selection }),
 });
 
 test("chat streaming requires authentication before validation or generation", async () => {
@@ -97,6 +109,23 @@ test("owned chats return AI SDK SSE events and accept conversation history", asy
   assert.match(stream, /text-delta/);
   assert.match(stream, /\[DONE\]/);
   assert.equal(model.doStreamCalls.at(-1)?.prompt.length, 3);
+  assert.deepEqual(lastSelection, { provider: "google", model: "auto" });
+});
+
+test("chat streaming rejects unsupported provider and model combinations", async () => {
+  const previous = generations;
+  assert.equal((await send([message], true, "owned-chat", { provider: "openai", model: "not-a-model" })).status, 400);
+  assert.equal((await send([message], true, "owned-chat", { provider: "unknown", model: "auto" })).status, 400);
+  assert.equal(generations, previous);
+});
+
+test("chat streaming forwards a supported provider and model selection", async () => {
+  const response = await send([message], true, "owned-chat", {
+    provider: "anthropic",
+    model: "claude-haiku-5-5",
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(lastSelection, { provider: "anthropic", model: "claude-haiku-5-5" });
 });
 
 test("provider setup errors do not expose private details", async () => {
