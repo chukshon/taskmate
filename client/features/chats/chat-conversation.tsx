@@ -29,6 +29,7 @@ import {
 } from "@/components/ai-elements/prompt-input"
 import { ChatAvatar } from "@/components/chat-avatar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -228,6 +229,11 @@ function ChatMessages({
             />
           )}
           {messages.flatMap((message) => {
+            // The bot a group chat's message was sent to
+            const addressee =
+              selectedBot && message.role === "user"
+                ? bots.find((bot) => bot.id === message.metadata?.botId)
+                : undefined
             const sections = selectedBot
               ? splitByAuthor(message, bots)
               : [
@@ -237,41 +243,66 @@ function ChatMessages({
                   },
                 ]
 
-            return sections.map(({ author, parts }, sectionIndex) => (
-              <Message
-                key={`${message.id}-${sectionIndex}`}
-                from={message.role}
-                className={author ? "flex-row items-start" : undefined}
-              >
-                {author && (
-                  <ChatAvatar seed={author.avatar} className="size-6" />
-                )}
-                <span className="sr-only">
-                  {message.role === "user"
-                    ? "You"
-                    : (author?.name ?? replyName)}
-                </span>
-                <MessageContent>
-                  {parts.map((part, index) => {
-                    if (part.type === "text") {
-                      return (
-                        <MessageResponse
-                          key={`${message.id}-${sectionIndex}-${index}`}
+            return sections.map(({ author, parts }, sectionIndex) => {
+              const renderedParts = parts.map((part, index) => {
+                if (part.type === "text") {
+                  return (
+                    <MessageResponse
+                      key={`${message.id}-${sectionIndex}-${index}`}
+                      // Flows the first paragraph inline, right after the tag
+                      className={
+                        addressee && index === 0
+                          ? "inline [&>p:first-child]:inline"
+                          : undefined
+                      }
+                    >
+                      {part.text}
+                    </MessageResponse>
+                  )
+                }
+                if (isChatToolPart(part)) {
+                  return <ChatToolCall key={part.toolCallId} part={part} />
+                }
+                return null
+              })
+
+              return (
+                <Message
+                  key={`${message.id}-${sectionIndex}`}
+                  from={message.role}
+                  className={author ? "flex-row items-start" : undefined}
+                >
+                  {author && (
+                    <ChatAvatar seed={author.avatar} className="size-6" />
+                  )}
+                  <span className="sr-only">
+                    {message.role === "user"
+                      ? "You"
+                      : (author?.name ?? replyName)}
+                  </span>
+                  <MessageContent>
+                    {addressee ? (
+                      // One block, so the tag and the text share a line and the text wraps under it
+                      <div>
+                        <Badge
+                          variant="outline"
+                          className="mr-1.5 max-w-40 pl-1 align-top"
                         >
-                          {part.text}
-                        </MessageResponse>
-                      )
-                    }
-                    if (isChatToolPart(part)) {
-                      return (
-                        <ChatToolCall key={part.toolCallId} part={part} />
-                      )
-                    }
-                    return null
-                  })}
-                </MessageContent>
-              </Message>
-            ))
+                          <ChatAvatar
+                            seed={addressee.avatar}
+                            className="size-3.5"
+                          />
+                          <span className="truncate">{addressee.name}</span>
+                        </Badge>
+                        {renderedParts}
+                      </div>
+                    ) : (
+                      renderedParts
+                    )}
+                  </MessageContent>
+                </Message>
+              )
+            })
           })}
           {status === "submitted" && (
             <div role="status" aria-label={`${replyName} is thinking`}>
@@ -330,7 +361,11 @@ function ChatMessages({
             const submitted = text.trim()
             submittedInput.current = submitted
             setInput("")
-            await sendMessage({ text: submitted })
+            // Kept on the message so the chat can show who it was for
+            const metadata = selectedBot
+              ? { botId: selectedBot.id }
+              : undefined
+            await sendMessage({ text: submitted, metadata })
           }}
         >
           <PromptInputTextarea
