@@ -19,7 +19,10 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.102",
+    "@ai-sdk/google": "^4.0.118",
     "@ai-sdk/openai": "^4.0.115",
+    "@ai-sdk/xai": "^5.0.43",
     "@clerk/express": "^2.1.85",
     "@neon/config": "^1.9.6",
     "@neon/env": "^1.6.6",
