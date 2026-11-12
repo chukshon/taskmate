@@ -1,7 +1,9 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useChat } from "@ai-sdk/react"
+import { useLoadTranscript } from "@trigger.dev/sdk/chat/react"
+import type { TriggerChatTransport } from "@trigger.dev/sdk/chat"
 import {
   Conversation,
   ConversationContent,
@@ -27,7 +29,11 @@ import { ChatModelSelector } from "@/features/chats/chat-model-selector"
 import type { ChatModelSelection } from "@/schemas/ai.schema"
 import { useChatModelsQuery } from "@/services/chats/queries"
 import { useApiAuth } from "@/hooks/use-api-auth"
-import { createChatTransport } from "@/services/chats/transport"
+import {
+  loadChatTranscript,
+  useChatTransport,
+  type ChatUIMessage,
+} from "@/services/chats/transport"
 
 export function ChatConversation({
   chatId,
@@ -37,11 +43,6 @@ export function ChatConversation({
   botName: string
 }) {
   const { getAccessToken } = useApiAuth()
-  const transport = useMemo(
-    () => createChatTransport(chatId, getAccessToken),
-    [chatId, getAccessToken]
-  )
-  const [input, setInput] = useState("")
   const {
     data: catalog,
     error: catalogError,
@@ -52,16 +53,89 @@ export function ChatConversation({
     provider: catalog?.defaultProvider ?? "google",
     model: "auto",
   }
-  const provider = catalog?.providers.find(
-    ({ id }) => id === activeSelection.provider
-  )
-  const canSend = Boolean(provider?.available)
-  const submittedInput = useRef("")
-  const { messages, sendMessage, status, error, regenerate, stop } = useChat({
-    id: chatId,
-    transport,
-    onError: () => setInput(submittedInput.current),
+  const transport = useChatTransport({
+    getAccessToken,
+    clientData: activeSelection,
   })
+  const { messages, isLoading, error: transcriptError } = useLoadTranscript(
+    chatId,
+    (params) => loadChatTranscript(params, getAccessToken),
+    { transport }
+  )
+
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading conversation"
+        className="flex min-h-0 flex-1 items-center justify-center"
+      >
+        <Spinner />
+      </div>
+    )
+  }
+
+  if (transcriptError) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-1 items-start p-4">
+        <Alert variant="destructive">
+          <AlertDescription>
+            {transcriptError.message || "Could not load this conversation."}
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  return (
+    <ChatMessages
+      key={chatId}
+      chatId={chatId}
+      botName={botName}
+      catalog={catalog}
+      catalogError={catalogError}
+      reloadCatalog={reloadCatalog}
+      selection={activeSelection}
+      onSelectionChange={setSelection}
+      initialMessages={messages}
+      transport={transport}
+    />
+  )
+}
+
+function ChatMessages({
+  chatId,
+  botName,
+  catalog,
+  catalogError,
+  reloadCatalog,
+  selection,
+  onSelectionChange,
+  initialMessages,
+  transport,
+}: {
+  chatId: string
+  botName: string
+  catalog: ReturnType<typeof useChatModelsQuery>["data"]
+  catalogError: ReturnType<typeof useChatModelsQuery>["error"]
+  reloadCatalog: ReturnType<typeof useChatModelsQuery>["refetch"]
+  selection: ChatModelSelection
+  onSelectionChange: (selection: ChatModelSelection) => void
+  initialMessages: ChatUIMessage[]
+  transport: TriggerChatTransport
+}) {
+  const [input, setInput] = useState("")
+  const submittedInput = useRef("")
+  const provider = catalog?.providers.find(({ id }) => id === selection.provider)
+  const canSend = Boolean(provider?.available)
+  const { messages, sendMessage, status, error, regenerate, stop } =
+    useChat<ChatUIMessage>({
+      id: chatId,
+      messages: initialMessages,
+      transport,
+      resume: initialMessages.length > 0,
+      onError: () => setInput(submittedInput.current),
+    })
   const busy = status === "submitted" || status === "streaming"
 
   return (
@@ -112,7 +186,7 @@ export function ChatConversation({
                 disabled={busy || !canSend}
                 onClick={() => {
                   setInput("")
-                  void regenerate({ body: activeSelection })
+                  void regenerate()
                 }}
               >
                 Retry
@@ -147,7 +221,7 @@ export function ChatConversation({
             const submitted = text.trim()
             submittedInput.current = submitted
             setInput("")
-            await sendMessage({ text: submitted }, { body: activeSelection })
+            await sendMessage({ text: submitted })
           }}
         >
           <PromptInputTextarea
@@ -162,9 +236,9 @@ export function ChatConversation({
             {catalog ? (
               <ChatModelSelector
                 catalog={catalog}
-                selection={activeSelection}
+                selection={selection}
                 disabled={busy}
-                onChange={setSelection}
+                onChange={onSelectionChange}
               />
             ) : (
               <Skeleton
@@ -175,7 +249,10 @@ export function ChatConversation({
             <PromptInputSubmit
               className="ml-auto"
               status={status}
-              onStop={() => void stop()}
+              onStop={() => {
+                void stop()
+                void transport.stopGeneration(chatId)
+              }}
               disabled={!busy && (!canSend || !input.trim())}
             />
           </PromptInputFooter>
