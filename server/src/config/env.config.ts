@@ -20,6 +20,7 @@ const envSchema = z.object({
   GOOGLE_GENERATIVE_AI_API_KEY: optionalAPIKey,
   XAI_API_KEY: optionalAPIKey,
   ANTHROPIC_API_KEY: optionalAPIKey,
+  TRIGGER_SECRET_KEY: optionalAPIKey,
 });
 
 const result = envSchema.safeParse({
