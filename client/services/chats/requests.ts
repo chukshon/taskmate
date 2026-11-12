@@ -1,7 +1,11 @@
 import { api } from "@/config/axios"
 import { ApiError } from "@/lib/api-error"
 import { getApiData } from "@/lib/api-response"
-import { chatListSchema, chatDetailSchema } from "@/schemas/chat.schema"
+import {
+  chatDesktopUrlSchema,
+  chatDetailSchema,
+  chatListSchema,
+} from "@/schemas/chat.schema"
 import type { ChatSummary, ChatDetail } from "@/services/chats/types"
 import type { ApiResponse } from "@/types/api-response"
 import {
@@ -56,4 +60,22 @@ export async function getChats(
   if (!result.success)
     throw new ApiError("The API returned an unexpected chat list.")
   return result.data
+}
+
+export async function getChatDesktopUrl(
+  chatId: string,
+  token: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const response = await api.get<ApiResponse<{ url: string }>>(
+    `/chats/${encodeURIComponent(chatId)}/desktop`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    }
+  )
+  const result = chatDesktopUrlSchema.safeParse(getApiData(response.data))
+  if (!result.success)
+    throw new ApiError("The API returned an unexpected desktop URL.")
+  return result.data.url
 }

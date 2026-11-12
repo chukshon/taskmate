@@ -51,7 +51,7 @@ export function ChatFeature({ chatId }: { chatId: string }) {
   }
 
   return (
-    <div className="flex h-svh min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <ChatHeader chat={data} />
       <ChatConversation
         key={chatId}

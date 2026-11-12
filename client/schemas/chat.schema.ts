@@ -23,7 +23,12 @@ export const chatDetailSchema = chatSchema.extend({
         avatar: z.string(),
         job: z.string(),
         instructions: z.string().nullable(),
+        sandboxId: z.string().nullable(),
       })
     )
     .min(1),
+})
+
+export const chatDesktopUrlSchema = z.object({
+  url: z.string().url(),
 })
