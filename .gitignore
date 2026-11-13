@@ -6,7 +6,6 @@ AGENTS.override.md
 CLAUDE.md
 CLAUDE.local.md
 GEMINI.md
-.agents/
 .codex/
 .claude/
 .cursor/
@@ -20,4 +19,3 @@ GEMINI.md
 .windsurf/
 .windsurfrules
 copilot-instructions.md
-skills-lock.json
