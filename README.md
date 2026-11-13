@@ -10,9 +10,39 @@ Research a topic, fill a form, clean a CSV, debug a repo, draft a report, click 
 
 ---
 
-<p align="center">
-  <img src="docs/screenshots/chat-and-desktop.png" alt="Chat with a bot while watching its live sandbox desktop" width="900" />
-</p>
+<table>
+  <tr>
+    <td colspan="2" align="center">
+      <img src="docs/screenshots/cards/chat-and-desktop.png" alt="Chat with a bot while watching its live sandbox desktop" />
+      <br />
+      <a href="#how-it-works">Learn more about how it works</a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/cards/home.png" alt="Empty home state inviting you to create your first bot" />
+      <br />
+      <a href="#getting-started">Learn more about getting started</a>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/cards/new-bot.png" alt="New bot dialog with presets, face, name, job, and instructions" />
+      <br />
+      <a href="#what-you-can-do">Learn more about bots</a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/cards/group-chat.png" alt="New group chat dialog with bots selected" />
+      <br />
+      <a href="#what-it-is">Learn more about group chats</a>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/cards/usage.png" alt="Usage page with AI and sandbox meters" />
+      <br />
+      <a href="#3-plans">Learn more about plans and usage</a>
+    </td>
+  </tr>
+</table>
 
 ## What it is
 
@@ -26,10 +56,6 @@ Bots are not one-shot agents. They keep a job and memory across chats, so a spec
 
 There is a free tier to try the product, and a **$10/month** paid plan for bots with their own sandboxes. Every model reply and every running desktop draws down a clear AI and sandbox allowance on the **Usage** page, so cost stays visible while the bots work.
 
-<p align="center">
-  <img src="docs/screenshots/home.png" alt="Empty home state inviting you to create your first bot" width="720" />
-</p>
-
 ## What you can do
 
 - **Hand off real work** — ask in plain language; the bot uses shell, files, mouse, and keyboard on its own machine
@@ -39,12 +65,6 @@ There is a free tier to try the product, and a **$10/month** paid plan for bots 
 - **Remember across chats** — notes a bot saves in one conversation are available in others
 - **Pick the model per send** — Gemini, OpenAI, xAI, or Anthropic, with Auto or a named model
 - **Free or $10/month** — free to explore; paid unlocks bots and sandboxes, with Usage meters for AI spend and sandbox hours
-
-## Product tour
-
-| Create a bot                                                                                                    | Group chat                                                                                   | Usage                                                                                |
-| --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| <img src="docs/screenshots/new-bot.png" alt="New bot dialog with presets, face, name, job, and instructions" /> | <img src="docs/screenshots/group-chat.png" alt="New group chat dialog with bots selected" /> | <img src="docs/screenshots/usage.png" alt="Usage page with AI and sandbox meters" /> |
 
 ## AI providers
 
