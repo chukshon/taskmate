@@ -2,9 +2,9 @@
 
 # Taskmate
 
-### Give AI a real computer — then put any task on it
+### Delegate tasks to AI teammates
 
-Research a topic, fill a form, clean a CSV, debug a repo, draft a report, click through a UI. You describe the work; the bot runs it on its own Linux desktop while you watch.
+Create bots with a clear role, chat with them one-on-one or in groups, and watch them run commands, edit files, and browse on an isolated cloud machine.
 
 </div>
 
@@ -48,13 +48,14 @@ Research a topic, fill a form, clean a CSV, debug a repo, draft a report, click 
 
 Most AI products stop at a reply. Taskmate is built for **finishing work**.
 
-You create bots — named characters with a job and standing instructions — and talk to them in chat. Behind each bot is an isolated Daytona Linux sandbox: shell, files, and a full graphical desktop. When the task needs a browser, a terminal, or a mouse click, the bot uses those tools itself. Open the desktop panel and you can watch the session live over noVNC.
+Each bot gets a role, standing instructions, cross-chat memory, and an isolated Daytona Linux desktop with a shell, filesystem, and browser. When a task requires running a script, inspecting a repo, or clicking through a site, the bot drives its own machine — and you can open the live noVNC preview to watch it work.
 
 That changes what you can ask for. Instead of “write a script that would do X,” you can say “do X,” and see it happen. A research bot can open pages and take notes. A code reviewer can clone a repo and walk the diff. An ops-minded bot can edit files, run commands, and leave artifacts in its sandbox for the next turn.
 
-Bots are not one-shot agents. They keep a job and memory across chats, so a specialist stays on-brief. Drop several into a **group chat** and they hand unfinished work to the teammate whose role fits — a researcher passes a draft to an editor, a reviewer picks up after a coder.
+Bots are not one-shot agents. They keep a job and memory across chats, so a specialist stays on-brief. Drop several into a **group chat** and they hand unfinished work to the teammate whose role fits — a researche
+r passes a draft to an editor, a reviewer picks up after a coder.
 
-There is a free tier to try the product, and a **$10/month** paid plan for bots with their own sandboxes. Every model reply and every running desktop draws down a clear AI and sandbox allowance on the **Usage** page, so cost stays visible while the bots work.
+There is a free tier to try the product, and a paid plan for bots with their own sandboxes. Every model reply and every running desktop draws down a clear AI and sandbox allowance on the **Usage** page, so cost stays visible while the bots work.
 
 ## What you can do
 
@@ -77,7 +78,7 @@ Chat is powered by the [AI SDK](https://ai-sdk.dev) on the server. You can confi
 | **xAI**              | `XAI_API_KEY`                  | Grok 4.7                                       |
 | **Anthropic**        | `ANTHROPIC_API_KEY`            | Claude Haiku 5.5 (Auto), Claude Sonnet 5.5     |
 
-You only need **one** key to chat. Add more keys to unlock more providers in the UI. Missing keys are reported as unavailable instead of failing the whole catalogue. Model spend is recorded on the usage ledger when a turn completes.
+Configure at least one API key on the server to start chatting. Adding more keys unlocks those providers in the composer; unconfigured providers stay hidden, and token spend from each reply is tracked automatically on the **Usage** page.
 
 ## Built with
 
@@ -220,6 +221,6 @@ server/   Express API, Drizzle schema, Trigger.dev tasks, AI providers
 
 <div align="center">
 
-Built for handing real work to AI that can actually run a computer — not another chat box.
+Persistent AI teammates with real cloud desktops — built to execute work, not just talk about it.
 
 </div>
