@@ -4,6 +4,7 @@ import {
   NoSuchModelError,
   RetryError,
 } from "ai";
+import { USAGE_LIMIT_ERROR } from "@/lib/billing";
 import { AppError } from "@/utils/app-error";
 
 export const SAFE_CHAT_ERROR_FALLBACK =
@@ -33,6 +34,10 @@ function unwrapChatError(error: unknown): unknown {
 }
 
 function mapSafeChatError(error: unknown): string | undefined {
+  if (error instanceof Error && error.message === USAGE_LIMIT_ERROR) {
+    return USAGE_LIMIT_ERROR;
+  }
+
   if (error instanceof AppError && error.statusCode < 500) {
     return error.message;
   }
