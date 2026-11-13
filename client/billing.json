@@ -1,0 +1,27 @@
+{
+  "billing": {
+    "user": {
+      "enabled": true
+    },
+    "plans": [
+      {
+        "slug": "pro",
+        "name": "Pro",
+        "description": "Bots and their sandboxes",
+        "amount": 2000,
+        "currency": "usd",
+        "payer_type": "user",
+        "is_recurring": true,
+        "period": "month",
+        "features": [
+          { "slug": "bots", "name": "Bots" },
+          { "slug": "sandboxes", "name": "Sandboxes" }
+        ]
+      }
+    ],
+    "features": [
+      { "slug": "bots", "name": "Bots" },
+      { "slug": "sandboxes", "name": "Sandboxes" }
+    ]
+  }
+}

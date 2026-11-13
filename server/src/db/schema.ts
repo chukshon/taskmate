@@ -1,5 +1,13 @@
 import { relations } from "drizzle-orm";
-import { index, pgEnum, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { nanoid } from "nanoid";
 import { bots } from "@/db/bot-schema";
 export { bots, botInsertSchema, botFormSchema, type BotInsert } from "@/db/bot-schema";
@@ -8,8 +16,33 @@ export {
   type GroupChatInsert,
 } from "@/db/group-chat-schema";
 
-
 export const chatKind = pgEnum("chat_kind", ["direct", "group"]);
+export const usageKind = pgEnum("usage_kind", ["ai", "sandbox"]);
+
+export const usageEntries = pgTable(
+  "usage_entries",
+  {
+    id: text()
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text().notNull(),
+    kind: usageKind().notNull(),
+    // ai: millionths of a dollar; sandbox: seconds
+    amount: integer().notNull(),
+    idempotencyKey: text().notNull().unique(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("usage_entries_user_id_created_at_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export type UsageKind = (typeof usageKind.enumValues)[number];
+export type UsageEntry = typeof usageEntries.$inferSelect;
+export type NewUsageEntry = typeof usageEntries.$inferInsert;
 
 export const chats = pgTable(
   "chats",

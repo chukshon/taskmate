@@ -3,11 +3,17 @@ import { db } from "@/db";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { bots, chatMembers, chats, type BotInsert } from "@/db/schema";
 import type { BotFormValues } from "@/db/bot-schema";
+import { USAGE_LIMIT_REACHED_MESSAGE } from "@/lib/billing";
 import {
   createBotSandbox,
   deleteBotSandbox,
 } from "@/services/daytona.service";
-import { InternalServerException, NotFoundException } from "@/utils/app-error";
+import { getUsage } from "@/services/usage.service";
+import {
+  ForbiddenException,
+  InternalServerException,
+  NotFoundException,
+} from "@/utils/app-error";
 
 export async function getBots(userId: string) {
   return db.query.bots.findMany({
@@ -89,6 +95,12 @@ export async function createBot(
     removeSandbox?: typeof deleteBotSandbox;
   } = {},
 ) {
+  // The new sandbox starts running right away
+  const usage = await getUsage(userId);
+  if (!usage || usage.remaining.sandbox <= 0) {
+    throw new ForbiddenException(USAGE_LIMIT_REACHED_MESSAGE);
+  }
+
   const id = nanoid();
   const sandboxId = await createSandbox(id);
 

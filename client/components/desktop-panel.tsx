@@ -16,6 +16,12 @@ import {
 import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable"
 import { Spinner } from "@/components/ui/spinner"
 import { useApiAuth } from "@/hooks/use-api-auth"
+import { usePaywall } from "@/hooks/use-paywall"
+import { ApiError } from "@/lib/api-error"
+import {
+  UPGRADE_REQUIRED_MESSAGE,
+  USAGE_LIMIT_REACHED_MESSAGE,
+} from "@/lib/billing"
 import { useChatQuery } from "@/services/chats/queries"
 import { getChatDesktopUrl } from "@/services/chats/requests"
 
@@ -51,6 +57,8 @@ export function DesktopPanelProvider({
   children: React.ReactNode
 }) {
   const { getAccessToken } = useApiAuth()
+  const { checkPlan, checkUsage, showUpgradeRequired, showUsageLimit } =
+    usePaywall()
   const [open, setOpen] = React.useState(false)
   const [status, setStatus] = React.useState<DesktopStatus>("idle")
 
@@ -98,16 +106,40 @@ export function DesktopPanelProvider({
         setStatus("disconnected")
       })
       rfbRef.current = rfb
-    } catch {
+    } catch (error) {
       if (attempt !== attemptRef.current) return
       setStatus("disconnected")
+      if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.message === UPGRADE_REQUIRED_MESSAGE
+      ) {
+        showUpgradeRequired()
+      } else if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.message === USAGE_LIMIT_REACHED_MESSAGE
+      ) {
+        showUsageLimit("sandbox")
+      }
     }
-  }, [chatId, getAccessToken, getScreen])
+  }, [
+    chatId,
+    getAccessToken,
+    getScreen,
+    showUpgradeRequired,
+    showUsageLimit,
+  ])
 
-  const toggle = React.useCallback(() => {
-    if (!open && status === "idle") connect()
+  const toggle = React.useCallback(async () => {
+    if (!open) {
+      // Showing the desktop starts the sandbox
+      if (!checkPlan("sandboxes") || !(await checkUsage("sandbox"))) return
+      // Connect the first time the panel opens and keep it for later opens
+      if (status === "idle") void connect()
+    }
     setOpen(!open)
-  }, [open, status, connect])
+  }, [open, status, connect, checkPlan, checkUsage])
 
   const attachScreen = React.useCallback(
     (slot: HTMLElement) => {

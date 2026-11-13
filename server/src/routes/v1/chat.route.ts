@@ -13,6 +13,7 @@ import {
   getChatsHandler,
   updateGroupChatHandler,
 } from "@/controllers/chat.controller";
+import { requireFeature } from "@/middlewares/requireFeature.middleware";
 import { requireSession } from "@/middlewares/requireSession.middleware";
 import { validateRequest } from "@/middlewares/validateRequest.middleware";
 import {
@@ -52,18 +53,21 @@ chatRoutes.delete(
 chatRoutes.get(
   "/:chatId/desktop",
   requireSession,
+  requireFeature("sandboxes"),
   validateRequest(getChatRequest),
   getChatDesktopUrlHandler(),
 );
 chatRoutes.post(
   "/:chatId/session",
   requireSession,
+  requireFeature("bots"),
   validateRequest(startChatSessionRequest),
   startChatSessionHandler(),
 );
 chatRoutes.post(
   "/:chatId/access-token",
   requireSession,
+  requireFeature("bots"),
   validateRequest(mintChatAccessTokenRequest),
   mintChatAccessTokenHandler(),
 );

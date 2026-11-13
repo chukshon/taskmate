@@ -5,6 +5,7 @@ import { z } from "zod";
 import { aiProviderIds, defaultAIProvider } from "@/config/ai.config";
 import { db } from "@/db";
 import { chatMembers, chats, type Bot, type Chat } from "@/db/schema";
+import { USAGE_LIMIT_ERROR } from "@/lib/billing";
 import { MEMORY_FILE } from "@/services/daytona.service";
 import { createChatModel } from "@/services/ai-model.service";
 import {
@@ -15,6 +16,11 @@ import {
   createSandboxTools,
   type ChatUIMessage,
 } from "@/services/sandbox-tools";
+import {
+  chatModelCost,
+  getUsage,
+  recordUsage,
+} from "@/services/usage.service";
 import { toSafeChatErrorMessage } from "@/utils/safe-chat-error";
 
 const clientDataSchema = z.object({
@@ -113,7 +119,7 @@ export const chatAgent = chat
     // Declared here so screenshots stay images when earlier turns are replayed.
     tools: async ({ chatId, clientData }) => {
       const {
-        chat: { kind },
+        chat: { kind, userId },
         bots,
         bot,
       } = await getChatBots(chatId, clientData?.botId);
@@ -122,9 +128,20 @@ export const chatAgent = chat
       let current = bot;
       const held = new Set([bot.id]);
 
+      // Asked before every tool call, so a yes is kept for a minute
+      let checkedAt = 0;
       const sandboxTools = createSandboxTools(async () => {
         if (!current.sandboxId) {
           throw new Error("This bot has no sandbox.");
+        }
+        if (Date.now() - checkedAt > 60_000) {
+          const usage = await getUsage(userId);
+          if (!usage || usage.remaining.sandbox <= 0) {
+            throw new Error(
+              "The sandbox hours for this billing period are used up, so the sandbox can't be used until the period resets.",
+            );
+          }
+          checkedAt = Date.now();
         }
         return current.sandboxId;
       });
@@ -149,6 +166,24 @@ export const chatAgent = chat
         }),
       };
     },
+    // Fires for stopped and failed turns too, which spent tokens all the same
+    onTurnComplete: async ({ chatId, runId, turn, usage }) => {
+      const [row] = await db
+        .select({ userId: chats.userId })
+        .from(chats)
+        .where(eq(chats.id, chatId));
+
+      if (usage && row) {
+        await recordUsage([
+          {
+            userId: row.userId,
+            kind: "ai",
+            amount: chatModelCost(usage),
+            idempotencyKey: `ai:${runId}:${turn}`,
+          },
+        ]);
+      }
+    },
     run: async ({
       chatId,
       clientData,
@@ -169,6 +204,10 @@ export const chatAgent = chat
         currentChat.kind === "group"
           ? { chat: currentChat, bots }
           : undefined;
+
+      // Every turn, as a session outlives the plan it was started on
+      const usage = await getUsage(currentChat.userId);
+      if (!usage || usage.remaining.ai <= 0) throw new Error(USAGE_LIMIT_ERROR);
 
       // Stamped on the reply and kept in the transcript with it
       chat.setUIMessageStreamOptions({
@@ -196,7 +235,13 @@ export const chatAgent = chat
             ? { instructions: buildInstructions(current, group) }
             : undefined;
         },
-        stopWhen: isStepCount(50),
+        stopWhen: [
+          isStepCount(50),
+          // A long turn ends once it has spent what was left
+          ({ steps }) =>
+            steps.reduce((cost, step) => cost + chatModelCost(step.usage), 0) >=
+            usage.remaining.ai,
+        ],
         abortSignal: signal,
         maxOutputTokens: 4096,
         ...(selection.provider === "openai"
