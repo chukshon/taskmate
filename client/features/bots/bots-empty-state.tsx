@@ -18,7 +18,7 @@ import { usePaywall } from "@/hooks/use-paywall"
 
 export function BotsEmptyState({ avatarSeed }: { avatarSeed: string }) {
   const [open, setOpen] = useState(false)
-  const { checkPlan } = usePaywall()
+  const { checkPlan, checkUsage } = usePaywall()
 
   return (
     <Empty>
@@ -36,8 +36,10 @@ export function BotsEmptyState({ avatarSeed }: { avatarSeed: string }) {
         <Button
           variant="secondary"
           size="lg"
-          onClick={() => {
-            if (checkPlan("bots")) setOpen(true)
+          onClick={async () => {
+            if (checkPlan("bots") && (await checkUsage("sandbox"))) {
+              setOpen(true)
+            }
           }}
         >
           <PlusIcon data-icon="inline-start" />

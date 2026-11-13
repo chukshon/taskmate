@@ -25,7 +25,10 @@ import { toast } from "@/components/ui/toast"
 import { botPresets } from "@/constants/bot"
 import { usePaywall } from "@/hooks/use-paywall"
 import { ApiError } from "@/lib/api-error"
-import { UPGRADE_REQUIRED_MESSAGE } from "@/lib/billing"
+import {
+  UPGRADE_REQUIRED_MESSAGE,
+  USAGE_LIMIT_REACHED_MESSAGE,
+} from "@/lib/billing"
 import { botFormSchema, type BotFormValues } from "@/schemas/bot.schema"
 import {
   useCreateBotMutation,
@@ -47,7 +50,8 @@ export function BotForm({
 }) {
   const createBotMutation = useCreateBotMutation()
   const updateBotMutation = useUpdateBotMutation()
-  const { checkPlan, showUpgradeRequired } = usePaywall()
+  const { checkPlan, checkUsage, showUpgradeRequired, showUsageLimit } =
+    usePaywall()
   const id = useId()
   const [initialSeed] = useState(() => crypto.randomUUID())
   const [isDeleting, setIsDeleting] = useState(false)
@@ -71,7 +75,13 @@ export function BotForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!bot) {
-      if (!checkPlan("bots") || !checkPlan("sandboxes")) return
+      if (
+        !checkPlan("bots") ||
+        !checkPlan("sandboxes") ||
+        !(await checkUsage("sandbox"))
+      ) {
+        return
+      }
     }
     onBusyChange(true)
     form.clearErrors("root")
@@ -91,6 +101,14 @@ export function BotForm({
         error.message === UPGRADE_REQUIRED_MESSAGE
       ) {
         showUpgradeRequired()
+        return
+      }
+      if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.message === USAGE_LIMIT_REACHED_MESSAGE
+      ) {
+        showUsageLimit("sandbox")
         return
       }
       if (error instanceof ApiError) {

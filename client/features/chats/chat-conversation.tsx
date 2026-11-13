@@ -43,7 +43,10 @@ import { useChatModelsQuery } from "@/services/chats/queries"
 import { useApiAuth } from "@/hooks/use-api-auth"
 import { usePaywall } from "@/hooks/use-paywall"
 import { ApiError } from "@/lib/api-error"
-import { UPGRADE_REQUIRED_MESSAGE } from "@/lib/billing"
+import {
+  UPGRADE_REQUIRED_MESSAGE,
+  USAGE_LIMIT_ERROR,
+} from "@/lib/billing"
 import {
   loadChatTranscript,
   useChatTransport,
@@ -208,7 +211,7 @@ function ChatMessages({
 }) {
   const [input, setInput] = useState("")
   const submittedInput = useRef("")
-  const { checkPlan, showUpgradeRequired } = usePaywall()
+  const { checkPlan, showUpgradeRequired, showUsageLimit } = usePaywall()
   const provider = catalog?.providers.find(({ id }) => id === selection.provider)
   const canSend = Boolean(provider?.available)
   const replyName = selectedBot?.name ?? title
@@ -220,6 +223,10 @@ function ChatMessages({
       resume: initialMessages.length > 0,
       onError: (chatError) => {
         setInput(submittedInput.current)
+        if (chatError.message === USAGE_LIMIT_ERROR) {
+          showUsageLimit("ai")
+          return
+        }
         if (
           chatError.message === UPGRADE_REQUIRED_MESSAGE ||
           (chatError instanceof ApiError && chatError.status === 403)

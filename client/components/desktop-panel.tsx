@@ -18,7 +18,10 @@ import { Spinner } from "@/components/ui/spinner"
 import { useApiAuth } from "@/hooks/use-api-auth"
 import { usePaywall } from "@/hooks/use-paywall"
 import { ApiError } from "@/lib/api-error"
-import { UPGRADE_REQUIRED_MESSAGE } from "@/lib/billing"
+import {
+  UPGRADE_REQUIRED_MESSAGE,
+  USAGE_LIMIT_REACHED_MESSAGE,
+} from "@/lib/billing"
 import { useChatQuery } from "@/services/chats/queries"
 import { getChatDesktopUrl } from "@/services/chats/requests"
 
@@ -54,7 +57,8 @@ export function DesktopPanelProvider({
   children: React.ReactNode
 }) {
   const { getAccessToken } = useApiAuth()
-  const { checkPlan, showUpgradeRequired } = usePaywall()
+  const { checkPlan, checkUsage, showUpgradeRequired, showUsageLimit } =
+    usePaywall()
   const [open, setOpen] = React.useState(false)
   const [status, setStatus] = React.useState<DesktopStatus>("idle")
 
@@ -111,19 +115,31 @@ export function DesktopPanelProvider({
         error.message === UPGRADE_REQUIRED_MESSAGE
       ) {
         showUpgradeRequired()
+      } else if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        error.message === USAGE_LIMIT_REACHED_MESSAGE
+      ) {
+        showUsageLimit("sandbox")
       }
     }
-  }, [chatId, getAccessToken, getScreen, showUpgradeRequired])
+  }, [
+    chatId,
+    getAccessToken,
+    getScreen,
+    showUpgradeRequired,
+    showUsageLimit,
+  ])
 
-  const toggle = React.useCallback(() => {
+  const toggle = React.useCallback(async () => {
     if (!open) {
       // Showing the desktop starts the sandbox
-      if (!checkPlan("sandboxes")) return
+      if (!checkPlan("sandboxes") || !(await checkUsage("sandbox"))) return
       // Connect the first time the panel opens and keep it for later opens
       if (status === "idle") void connect()
     }
     setOpen(!open)
-  }, [open, status, connect, checkPlan])
+  }, [open, status, connect, checkPlan, checkUsage])
 
   const attachScreen = React.useCallback(
     (slot: HTMLElement) => {
