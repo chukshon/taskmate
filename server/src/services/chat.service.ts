@@ -2,8 +2,11 @@ import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/db";
 import type { GroupChatInsert } from "@/db/group-chat-schema";
 import { bots, chatMembers, chats } from "@/db/schema";
+import { USAGE_LIMIT_REACHED_MESSAGE } from "@/lib/billing";
 import { getBotDesktopUrl } from "@/services/daytona.service";
+import { getUsage } from "@/services/usage.service";
 import {
+  ForbiddenException,
   InternalServerException,
   NotFoundException,
 } from "@/utils/app-error";
@@ -82,6 +85,13 @@ export async function getChatDesktopUrl(userId: string, chatId: string) {
   if (chat.kind !== "direct") throw new NotFoundException("Chat not found.");
   const sandboxId = chat.bots[0]?.sandboxId;
   if (!sandboxId) throw new NotFoundException("This bot has no sandbox.");
+
+  // Showing the desktop starts the sandbox
+  const usage = await getUsage(userId);
+  if (!usage || usage.remaining.sandbox <= 0) {
+    throw new ForbiddenException(USAGE_LIMIT_REACHED_MESSAGE);
+  }
+
   return getBotDesktopUrl(sandboxId);
 }
 
