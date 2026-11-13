@@ -41,6 +41,9 @@ import {
 import type { ChatModelSelection } from "@/schemas/ai.schema"
 import { useChatModelsQuery } from "@/services/chats/queries"
 import { useApiAuth } from "@/hooks/use-api-auth"
+import { usePaywall } from "@/hooks/use-paywall"
+import { ApiError } from "@/lib/api-error"
+import { UPGRADE_REQUIRED_MESSAGE } from "@/lib/billing"
 import {
   loadChatTranscript,
   useChatTransport,
@@ -205,6 +208,7 @@ function ChatMessages({
 }) {
   const [input, setInput] = useState("")
   const submittedInput = useRef("")
+  const { checkPlan, showUpgradeRequired } = usePaywall()
   const provider = catalog?.providers.find(({ id }) => id === selection.provider)
   const canSend = Boolean(provider?.available)
   const replyName = selectedBot?.name ?? title
@@ -214,7 +218,15 @@ function ChatMessages({
       messages: initialMessages,
       transport,
       resume: initialMessages.length > 0,
-      onError: () => setInput(submittedInput.current),
+      onError: (chatError) => {
+        setInput(submittedInput.current)
+        if (
+          chatError.message === UPGRADE_REQUIRED_MESSAGE ||
+          (chatError instanceof ApiError && chatError.status === 403)
+        ) {
+          showUpgradeRequired()
+        }
+      },
     })
   const busy = status === "submitted" || status === "streaming"
 
@@ -358,6 +370,8 @@ function ChatMessages({
         <PromptInput
           onSubmit={async ({ text }) => {
             if (busy || !canSend || !text.trim()) return
+            // Throwing keeps the draft in the input
+            if (!checkPlan("bots")) throw new Error(UPGRADE_REQUIRED_MESSAGE)
             const submitted = text.trim()
             submittedInput.current = submitted
             setInput("")

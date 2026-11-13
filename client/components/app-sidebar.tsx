@@ -9,6 +9,7 @@ import { ChatSearchDialog } from "@/components/dialog/chat-search-dialog"
 import { GroupChatDialog } from "@/components/dialog/group-chat-dialog"
 import { Button } from "@/components/ui/button"
 import { ChatSearchButton, SidebarChats } from "@/features/chats"
+import { usePaywall } from "@/hooks/use-paywall"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ export function AppSidebar() {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
   const [groupDialogOpen, setGroupDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const { checkPlan } = usePaywall()
 
   return (
     <>
@@ -52,7 +54,11 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => setBotDialogOpen(true)}>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (checkPlan("bots")) setBotDialogOpen(true)
+                    }}
+                  >
                     <PlusIcon />
                     Create new bot
                   </DropdownMenuItem>

@@ -1,7 +1,11 @@
+"use client"
+
+import { useState } from "react"
 import { PlusIcon } from "lucide-react"
 
 import { ChatAvatar } from "@/components/chat-avatar"
 import { BotDialog } from "@/components/dialog/bot-dialog"
+import { Button } from "@/components/ui/button"
 import {
   Empty,
   EmptyContent,
@@ -10,8 +14,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { usePaywall } from "@/hooks/use-paywall"
 
 export function BotsEmptyState({ avatarSeed }: { avatarSeed: string }) {
+  const [open, setOpen] = useState(false)
+  const { checkPlan } = usePaywall()
+
   return (
     <Empty>
       <EmptyHeader className="max-w-md">
@@ -25,10 +33,17 @@ export function BotsEmptyState({ avatarSeed }: { avatarSeed: string }) {
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <BotDialog>
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={() => {
+            if (checkPlan("bots")) setOpen(true)
+          }}
+        >
           <PlusIcon data-icon="inline-start" />
           Create a new bot
-        </BotDialog>
+        </Button>
+        <BotDialog open={open} onOpenChange={setOpen} />
       </EmptyContent>
     </Empty>
   )
