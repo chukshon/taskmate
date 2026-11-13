@@ -1,12 +1,12 @@
 "use client"
 
-import { UserButton } from "@clerk/nextjs"
 import { useState } from "react"
 import { PlusIcon, UsersIcon } from "lucide-react"
 
 import { BotDialog } from "@/components/dialog/bot-dialog"
 import { ChatSearchDialog } from "@/components/dialog/chat-search-dialog"
 import { GroupChatDialog } from "@/components/dialog/group-chat-dialog"
+import { UserMenu } from "@/components/user-menu"
 import { Button } from "@/components/ui/button"
 import { ChatSearchButton, SidebarChats } from "@/features/chats"
 import { usePaywall } from "@/hooks/use-paywall"
@@ -32,7 +32,7 @@ export function AppSidebar() {
   const [botDialogOpen, setBotDialogOpen] = useState(false)
   const [groupDialogOpen, setGroupDialogOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const { checkPlan } = usePaywall()
+  const { checkPlan, checkUsage } = usePaywall()
 
   return (
     <>
@@ -55,8 +55,11 @@ export function AppSidebar() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuGroup>
                   <DropdownMenuItem
-                    onClick={() => {
-                      if (checkPlan("bots")) setBotDialogOpen(true)
+                    onClick={async () => {
+                      // A new bot's sandbox starts running right away
+                      if (checkPlan("bots") && (await checkUsage("sandbox"))) {
+                        setBotDialogOpen(true)
+                      }
                     }}
                   >
                     <PlusIcon />
@@ -85,20 +88,7 @@ export function AppSidebar() {
                 render={<div />}
                 className="p-0 group-data-[collapsible=icon]:p-0!"
               >
-                <UserButton
-                  showName
-                  appearance={{
-                    elements: {
-                      rootBox: "flex! min-w-0! w-full!",
-                      userButtonTrigger:
-                        "h-8! w-full! justify-start! rounded-md! px-2! py-1! text-sidebar-foreground! shadow-none! ring-sidebar-ring! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! focus-visible:ring-2! group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:p-1!",
-                      userButtonBox: "min-w-0! w-full! gap-2!",
-                      userButtonAvatarBox: "order-first! size-6! shrink-0!",
-                      userButtonOuterIdentifier:
-                        "min-w-0! truncate! p-0! text-left! text-sm! font-normal! text-inherit! group-data-[collapsible=icon]:hidden!",
-                    },
-                  }}
-                />
+                <UserMenu />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
